@@ -34,7 +34,7 @@ class AliHLTTPCCATrackletVector
   public:
     AliHLTTPCCATrackletVector();
 
-    uint_m IsValid() const { return fNHits > uint_v( Vc::Zero ); }
+    uint_m IsValid() const { return fNHits > uint_v( 0 ); }
 
     uint_v NHits() const    { return fNHits;    }
     uint_v FirstRow() const { return fFirstRow; }
@@ -51,9 +51,9 @@ class AliHLTTPCCATrackletVector
     void SetLastRow ( const uint_v &x ) { fLastRow  = x; }
     void SetParam   ( const TrackParamVector &x ) { fParam = x; }
 
-    void SetNHits   ( const uint_v &x, uint_m mask ) { fNHits(mask)    = x; }
-    void SetFirstRow( const uint_v &x, uint_m mask ) { fFirstRow(mask) = x; }
-    void SetLastRow ( const uint_v &x, uint_m mask  ) { fLastRow(mask)  = x; }
+    void SetNHits   ( const uint_v &x, uint_m mask ) { fNHits = KFP::SIMD::select(mask, x, fNHits); }
+    void SetFirstRow( const uint_v &x, uint_m mask ) { fFirstRow = KFP::SIMD::select(mask, x, fFirstRow); }
+    void SetLastRow ( const uint_v &x, uint_m mask  ) { fLastRow = KFP::SIMD::select(mask, x, fLastRow); }
     void SetParam   ( const TrackParamVector &x, float_m mask  );
 
     void SetRowHits( int rowIndex, const uint_v &trackIndex, const uint_v &hitIndex );
@@ -69,7 +69,8 @@ class AliHLTTPCCATrackletVector
     uint_v fFirstRow;   // first TPC row
     uint_v fLastRow;    // last TPC row
     TrackParamVector fParam;   // tracklet parameters
-    Vc::array< Vc::array<unsigned int, uint_v::Size>, AliHLTTPCCAParameters::MaxNumberOfRows8 > fRowHits; // hit index for each TPC row
+//    Vc::array< Vc::array<unsigned int, uint_v::Size>, AliHLTTPCCAParameters::MaxNumberOfRows8 > fRowHits; // hit index for each TPC row
+    std::array< std::array<int, uint_v::SimdLen>, AliHLTTPCCAParameters::MaxNumberOfRows8 > fRowHits; // hit index for each TPC row	//TODO: check performance
 };
 
 inline void AliHLTTPCCATrackletVector::SetParam( const TrackParamVector &x, float_m mask )
@@ -77,8 +78,7 @@ inline void AliHLTTPCCATrackletVector::SetParam( const TrackParamVector &x, floa
   if( mask.isFull() ) {
     fParam = x;
     return;
-  }
-  else {
+  } else {
     fParam.SetTrackParam(x, mask);
   }
 }
@@ -86,13 +86,13 @@ inline void AliHLTTPCCATrackletVector::SetParam( const TrackParamVector &x, floa
 inline void AliHLTTPCCATrackletVector::SetRowHits( int rowIndex, const uint_v &trackIndex,
     const uint_v &hitIndex )
 {
-  assert( (trackIndex[0] + uint_v( Vc::IndexesFromZero ) == trackIndex).isFull() );
-  assert( uint_m(( trackIndex[0] % uint_v::Size ) == 0).isFull() );
+//  assert( (trackIndex[0] + uint_v( Vc::IndexesFromZero ) == trackIndex).isFull() );
+  assert( uint_m(( trackIndex[0] % uint_v::SimdLen ) == 0).isFull() );
   UNUSED_PARAM1( trackIndex );
   VALGRIND_CHECK_VALUE_IS_DEFINED( hitIndex );
   VALGRIND_CHECK_MEM_IS_DEFINED( &fRowHits[rowIndex], sizeof( uint_v ) );
 //  hitIndex.store( &fRowHits[rowIndex][0] );
-  for( unsigned int i = 0; i < float_v::Size; i++ ) {
+  for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
     fRowHits[rowIndex][i] = hitIndex[i];
   }
 //  VALGRIND_CHECK_MEM_IS_DEFINED( &fRowHits[rowIndex], sizeof( uint_v ) );
@@ -115,8 +115,8 @@ inline void AliHLTTPCCATrackletVector::SetRowHits( int rowIndex, const uint_v &t
   VALGRIND_CHECK_VALUE_IS_DEFINED( trackIndex );
   VALGRIND_CHECK_VALUE_IS_DEFINED( hitIndex );
   VALGRIND_CHECK_VALUE_IS_DEFINED( mask );
-  assert( (trackIndex[0] + uint_v( Vc::IndexesFromZero ) == trackIndex).isFull() );
-  assert( uint_m(( trackIndex[0] % uint_v::Size ) == 0).isFull() );
+//  assert( (trackIndex[0] + uint_v( Vc::IndexesFromZero ) == trackIndex).isFull() );
+  assert( uint_m(( trackIndex[0] % uint_v::SimdLen ) == 0).isFull() );
   UNUSED_PARAM1( trackIndex );
   assert( &fRowHits[0] != 0 );
   VALGRIND_CHECK_MEM_IS_DEFINED( &fRowHits[rowIndex], sizeof( uint_v ) );
@@ -124,7 +124,7 @@ inline void AliHLTTPCCATrackletVector::SetRowHits( int rowIndex, const uint_v &t
 //   debugF() << uint_v( fRowHits[rowIndex] );
 //   debugF() << " new: " << hitIndex << mask;
   if( mask.isEmpty() ) return;
-  for( unsigned int i = 0; i < float_v::Size; i++ ) {
+  for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
     if( !mask[i] ) continue;
     fRowHits[rowIndex][i] = hitIndex[i];
   }

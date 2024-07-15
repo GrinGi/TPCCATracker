@@ -155,19 +155,19 @@ inline void AliHLTTPCCATracker::NeighboursFinder::executeOnRow( int rowIndex ) c
     // #endif
   
 //  STATIC_ASSERT( int_v::Size % float_v::Size == 0, Short_Vector_Size_is_not_a_multiple_of_Float_Vector_Size );
-  for ( unsigned int hitIndex = 0; hitIndex < numberOfHits; hitIndex += int_v::Size ) {
+  for ( unsigned int hitIndex = 0; hitIndex < numberOfHits; hitIndex += int_v::SimdLen ) {
 
 #ifdef DRAW_NEIGHBOURSFINDING
     float_v neighUpY[kMaxN];
     float_v neighUpZ[kMaxN];
 #endif      
 
-    uint_v hitIndexes( uint_v(Vc::IndexesFromZero) + hitIndex ); 
+    uint_v hitIndexes( uint_v::iota( 0 )/*(Vc::IndexesFromZero)*/ + hitIndex );
     const int_m &validHitsMask = hitIndexes < numberOfHits;
     
       // WARNING: there is very similar code above.
     // coordinates of the hit in the current row
-    float_v y(Vc::Zero), z(Vc::Zero), yUp(Vc::Zero), zUp(Vc::Zero), yDn(Vc::Zero), zDn(Vc::Zero);
+    float_v y( 0.f ), z( 0.f ), yUp( 0.f ), zUp( 0.f ), yDn( 0.f ), zDn( 0.f );
     
     y = fData.UnusedHitPDataY( row, hitIndexes, static_cast<float_m>(validHitsMask) );
     z = fData.UnusedHitPDataZ( row, hitIndexes, static_cast<float_m>(validHitsMask) );
@@ -191,7 +191,7 @@ inline void AliHLTTPCCATracker::NeighboursFinder::executeOnRow( int rowIndex ) c
       // find all neighbours in upper area (kMaxN at max)
     HitArea areaUp( rowUp, fData, yUp, zUp, UpDx*kAreaSizeY, UpDx*kAreaSizeZ, validHitsMask );
 
-    uint_v maxUpperNeighbourIndex = uint_v(Vc::Zero);
+    uint_v maxUpperNeighbourIndex = uint_v( 0 );
     int upperNeighbourIndex = 0;
     NeighbourData neighUp[kMaxN];
     while ( !( areaUp.GetNext( &neighUp[upperNeighbourIndex] ) ).isEmpty() ) {
@@ -203,7 +203,8 @@ inline void AliHLTTPCCATracker::NeighboursFinder::executeOnRow( int rowIndex ) c
       neighUp[upperNeighbourIndex].fY = DnDx * ( neighUp[upperNeighbourIndex].fY - y );
       neighUp[upperNeighbourIndex].fZ = DnDx * ( neighUp[upperNeighbourIndex].fZ - z );
 
-      maxUpperNeighbourIndex(neighUp[upperNeighbourIndex].fValid)++;
+//      maxUpperNeighbourIndex(neighUp[upperNeighbourIndex].fValid)++;
+      maxUpperNeighbourIndex = KFP::SIMD::select( neighUp[upperNeighbourIndex].fValid, maxUpperNeighbourIndex+1, maxUpperNeighbourIndex );
       ++upperNeighbourIndex;
 
       if ( ISUNLIKELY(upperNeighbourIndex >= kMaxN) ){
@@ -224,7 +225,7 @@ inline void AliHLTTPCCATracker::NeighboursFinder::executeOnRow( int rowIndex ) c
     uint_m nextMask;
     HitArea areaDn( rowDn, fData, yDn, zDn, -DnDx*kAreaSizeY, -DnDx*kAreaSizeZ, validHitsMask );
     while ( !( nextMask = areaDn.GetNext( &neighDn ) ).isEmpty() ) {
-      if ( ISUNLIKELY( ((uint_v(Vc::Zero) < maxUpperNeighbourIndex) && neighDn.fValid).isEmpty() ) ) continue; // no both neighbours
+      if ( ISUNLIKELY( ((uint_v( 0 ) < maxUpperNeighbourIndex) && neighDn.fValid).isEmpty() ) ) continue; // no both neighbours
       
       assert( (neighDn.fLinks < rowDn.NUnusedHits() || !neighDn.fValid).isFull() );
 
@@ -237,17 +238,18 @@ inline void AliHLTTPCCATracker::NeighboursFinder::executeOnRow( int rowIndex ) c
       neighDn.fY = UpDx * ( neighDn.fY - y );
       neighDn.fZ = UpDx * ( neighDn.fZ - z );
 
-      int_m dnMask( Vc::Zero ); // mask for appropriate neibours-pairs
+      int_m dnMask( false ); // mask for appropriate neibours-pairs
 
         // iterate over the upper hits we found before and find the one with lowest curvature
         // (change of slope)
 
       uint_v curMaxUpperNeighbourIndex = maxUpperNeighbourIndex;
-      curMaxUpperNeighbourIndex(!neighDn.fValid) = 0;
+//      curMaxUpperNeighbourIndex(!neighDn.fValid) = 0;
+      curMaxUpperNeighbourIndex = KFP::SIMD::select( !neighDn.fValid, 0, curMaxUpperNeighbourIndex );
       const int maxMaxUpperNeighbourIndex = curMaxUpperNeighbourIndex.max();
         // for ( int i = 0; !( (uint_v(i) < maxUpperNeighbourIndex) && nextMask).isEmpty(); ++i ) { // slower
       for ( int i = 0; i < maxMaxUpperNeighbourIndex; ++i ) {
-        float_m masksf( neighDn.fValid & neighUp[i].fValid ); // only store links for actually useful data.
+        float_m masksf( neighDn.fValid && neighUp[i].fValid ); // only store links for actually useful data.
         
         const float_v dy = neighDn.fY - neighUp[i].fY;
         const float_v dz = neighDn.fZ - neighUp[i].fZ;
@@ -265,15 +267,18 @@ inline void AliHLTTPCCATracker::NeighboursFinder::executeOnRow( int rowIndex ) c
         const float_v d = dy * dy + dz * dz;
 // WRONG NEIGHBOURS DOWU EXCLUDING FIRST - FIXED
         masksf &= d < bestD;
-        bestD( masksf ) = d;
+//        bestD( masksf ) = d;
+        bestD = KFP::SIMD::select( masksf, d, bestD );
         const int_m masks( masksf );
         dnMask |= masks;
 //        bestUp( masks ) = static_cast<int_v>(neighUp[i].fLinks);
-        bestUp( masks ) = neighUp[i].fLinks;
+//        bestUp( masks ) = neighUp[i].fLinks;
+        bestUp = KFP::SIMD::select( masks, neighUp[i].fLinks, bestUp );
         debugS() << "best up: " << masks << " " << bestUp << std::endl;
       }
 //      bestDn( dnMask ) = static_cast<int_v>(neighDn.fLinks);
-      bestDn( dnMask ) = neighDn.fLinks;
+//      bestDn( dnMask ) = neighDn.fLinks;
+      bestDn = KFP::SIMD::select( dnMask, neighDn.fLinks, bestDn );
       debugS() << "best down: " << dnMask << " " << bestDn << std::endl;
     }
 
@@ -286,6 +291,8 @@ inline void AliHLTTPCCATracker::NeighboursFinder::executeOnRow( int rowIndex ) c
     assert( ((bestDn >= -1) && (bestDn < rowDn.NUnusedHits()) && validHitsMask) == validHitsMask );
     fData.SetUnusedHitLinkUpData( row, rowUp, hitIndexes, bestUp, validHitsMask);
     fData.SetUnusedHitLinkDownData( row, rowDn, hitIndexes, bestDn, validHitsMask);
+//    std::cout << "- hitIndexes: " << hitIndexes << "; bestUp: " << bestUp
+//              << "; bestDn: " << bestDn << "\n";//"; validHitsMask: " << validHitsMask << "\n";
   } // for hitIndex
 
 }

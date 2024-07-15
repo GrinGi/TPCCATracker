@@ -46,7 +46,7 @@ using std::endl;
 
 void AliHLTTPCCATrackletSelector::run()
 {
-  fTracks.resize( fNumberOfTracks * uint_v::Size * AliHLTTPCCAParameters::MaxNumberOfRows8 / AliHLTTPCCAParameters::MinimumHitsForTrack ); // should be less, the factor is for safety, since the tracks can be broken into pieces
+  fTracks.resize( fNumberOfTracks * uint_v::SimdLen * AliHLTTPCCAParameters::MaxNumberOfRows8 / AliHLTTPCCAParameters::MinimumHitsForTrack ); // should be less, the factor is for safety, since the tracks can be broken into pieces
 #ifdef USE_TBB
   tbb::atomic<int> numberOfTracks;
   tbb::fatomic<int> NHitsTotal;
@@ -59,9 +59,9 @@ void AliHLTTPCCATrackletSelector::run()
   NHitsTotal = 0;
 
   const unsigned int NTracklets = fTracker.NTracklets();
-  for ( unsigned int iTrackletV = 0; iTrackletV * int_v::Size < NTracklets; ++iTrackletV ) {
+  for ( unsigned int iTrackletV = 0; iTrackletV * int_v::SimdLen < NTracklets; ++iTrackletV ) {
     const TrackletVector &tracklet = fTrackletVectors[iTrackletV];
-    const uint_v trackIndexes = uint_v( Vc::IndexesFromZero ) + uint_v(iTrackletV * int_v::Size);
+    const uint_v trackIndexes = uint_v::iota( 0 )/*( Vc::IndexesFromZero )*/ + uint_v(iTrackletV * int_v::SimdLen);
 
     const uint_v &NTrackletHits = tracklet.NHits();
     const uint_m &validTracklets = trackIndexes < NTracklets+4 && NTrackletHits >= uint_v(AliHLTTPCCAParameters::MinimumHitsForTracklet);
@@ -71,18 +71,19 @@ void AliHLTTPCCATrackletSelector::run()
     const uint_v &firstRow = tracklet.FirstRow();
     const uint_v &lastRow  = tracklet.LastRow();
 
-    uint_v nTrackHits( Vc::Zero );
+    uint_v nTrackHits( 0 );
 
-    Track *trackCandidates[int_v::Size];
-    for( unsigned int iV=0; iV<uint_v::Size; iV++ ) {
+    Track *trackCandidates[int_v::SimdLen];
+    for( unsigned int iV=0; iV<uint_v::SimdLen; iV++ ) {
       if(!validTracklets[iV]) continue;
       trackCandidates[iV] = new Track;
     }
 
-    uint_v gap( Vc::Zero ); // count how many rows are missing a hit
-    uint_v nShared( Vc::Zero );
-    for ( unsigned int rowIndex = firstRow.min(); rowIndex <= lastRow.max(); ++rowIndex ) {
-      ++gap;
+    uint_v gap( 0 ); // count how many rows are missing a hit
+    uint_v nShared( 0 );
+    for ( unsigned int rowIndex = firstRow.min(); rowIndex <= static_cast<unsigned int>(lastRow.max()); ++rowIndex ) {
+//      ++gap;
+      gap += 1;
       const uint_v &hitIndexes = tracklet.HitIndexAtRow( rowIndex ); // hit index for the current row
       const uint_m &validHits = validTracklets && validHitIndexes( hitIndexes );
       const uint_m &ownHitsMask = fData.TakeOwnHits( fData.Row( rowIndex ), hitIndexes, validHits, NTrackletHits );
@@ -90,7 +91,7 @@ void AliHLTTPCCATrackletSelector::run()
       const uint_m &saveHitMask = validHits && ( ownHitsMask || canShareHitMask );
       const uint_m &bigGapMask = gap > static_cast<unsigned int>(AliHLTTPCCAParameters::MaximumRowGap);
       const uint_m &brokenTrackMask = bigGapMask && (nTrackHits >= static_cast<unsigned int>(AliHLTTPCCAParameters::MinimumHitsForTrack));
-      for( unsigned int iV=0; iV<uint_v::Size; iV++ ) {
+      for( unsigned int iV=0; iV<uint_v::SimdLen; iV++ ) {
         if(!validTracklets[iV]) continue;
         if ( saveHitMask[iV] ) {
           assert( hitIndexes[iV] < fData.Row( rowIndex ).NHits() );
@@ -107,15 +108,19 @@ void AliHLTTPCCATrackletSelector::run()
           trackCandidates[iV] = new Track;
         } // if save
       } // for i
-      nTrackHits( saveHitMask )++;
-      nTrackHits.setZero( bigGapMask && !saveHitMask );
-      nShared( saveHitMask && !ownHitsMask  )++;
-      gap.setZero( saveHitMask || brokenTrackMask );
+//      nTrackHits( saveHitMask )++;
+      nTrackHits = KFP::SIMD::select( saveHitMask, nTrackHits+1, nTrackHits );
+//      nTrackHits.setZero( bigGapMask && !saveHitMask );
+      nTrackHits = KFP::SIMD::select( bigGapMask && !saveHitMask, 0, nTrackHits );
+//      nShared( saveHitMask && !ownHitsMask  )++;
+      nShared = KFP::SIMD::select( saveHitMask && !ownHitsMask, nShared+1, nShared );
+//      gap.setZero( saveHitMask || brokenTrackMask );
+      gap = KFP::SIMD::select( saveHitMask || brokenTrackMask, 0, gap );
     }
 
-    for( unsigned int iV=0; iV<uint_v::Size; iV++ ) {
+    for( unsigned int iV=0; iV<uint_v::SimdLen; iV++ ) {
       if(!validTracklets[iV]) continue;
-      if ( nTrackHits[iV] >= static_cast<unsigned int>(AliHLTTPCCAParameters::MinimumHitsForTrack) ) {
+      if ( static_cast<unsigned int>(nTrackHits[iV]) >= static_cast<unsigned int>(AliHLTTPCCAParameters::MinimumHitsForTrack) ) {
         NHitsTotal += nTrackHits[iV];
         
         fTracks[numberOfTracks] = trackCandidates[iV];

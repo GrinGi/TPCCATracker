@@ -73,7 +73,7 @@ class AliHLTTPCCAParam
 
     int ISlice() const { return fISlice;}
     int NRows() const { return fNRows; }
-    int NRows8() const { return fNRows + float_v::Size - (fNRows-1)%float_v::Size - 1;} // NRows8 % float_v::Size == 0 && NRows + float_v::Size > NRows8 >= NRows
+    int NRows8() const { return fNRows + float_v::SimdLen - (fNRows-1)%float_v::SimdLen - 1;} // NRows8 % float_v::Size == 0 && NRows + float_v::Size > NRows8 >= NRows
 //
     int NInnerRows() const { return fNInnerRows; }
     int NTpcRows()   const { return fNTpcRows; }
@@ -190,7 +190,8 @@ class AliHLTTPCCAParam
   }
     inline uint_v errorType( int_v row) const {
       uint_v type( 7 );
-      type.setZero( row < fNInnerRows );
+//      type.setZero( row < fNInnerRows );
+      type = KFP::SIMD::select( row < fNInnerRows, 0, type );
       return type;
     }
 };
@@ -227,17 +228,19 @@ inline float_v AliHLTTPCCAParam::GetBz( const AliHLTTPCCATrackParamVector &t ) c
 
 inline void AliHLTTPCCAParam::GetClusterErrors2( int iRow, const TrackParamVector &t, float_v *Err2Y, float_v *Err2Z ) const
 {
-  const float_v one = float_v(Vc::One);
-  const float_v zero = float_v(Vc::Zero);
+  const float_v one = float_v(1.f);
+  const float_v zero = float_v(0.f);
   float_v z = t.Z();
   const int type = errorType( iRow);// , z);
   z = (200.f - CAMath::Abs(z)) * 0.01f;
-  z(z < zero) = zero;
+//  z(z < zero) = zero;
+  z = KFP::SIMD::select( z < zero, zero, z );
 
   float_v sin2Phi = t.GetSinPhi()*t.GetSinPhi();
   float_v cos2Phi = (one - sin2Phi);
-  cos2Phi(cos2Phi < 0.0001f) = 0.0001f;
-  float_v tg2Phi = sin2Phi/cos2Phi;
+//  cos2Phi(cos2Phi < 0.0001f) = 0.0001f;
+  cos2Phi = KFP::SIMD::select( cos2Phi < 0.0001f, 0.0001f, cos2Phi );
+  float_v tg2Phi = sin2Phi / cos2Phi;
 
   float_v tg2Lambda = t.DzDs()*t.DzDs();
 
@@ -249,8 +252,10 @@ inline void AliHLTTPCCAParam::GetClusterErrors2( int iRow, const TrackParamVecto
   w(w>one) = one;
 #endif
   const float_v errmin=1e-6f;
-  v(v<errmin) = errmin;
-  w(w<errmin) = errmin;
+//  v(v<errmin) = errmin;
+//  w(w<errmin) = errmin;
+  v = KFP::SIMD::select( v < errmin, errmin, v );
+  w = KFP::SIMD::select( w < errmin, errmin, w );
 
   *Err2Y = CAMath::Abs( v );
   *Err2Z = CAMath::Abs( w );
@@ -258,51 +263,55 @@ inline void AliHLTTPCCAParam::GetClusterErrors2( int iRow, const TrackParamVecto
 
 inline void AliHLTTPCCAParam::GetClusterErrors2( uint_v rowIndexes, const TrackParamVector &t, float_v *Err2Y, float_v *Err2Z ) const
 {
-  const float_v one = float_v(Vc::One);
-  const float_v zero = float_v(Vc::Zero);
+  const float_v one = float_v(1.f);
+  const float_v zero = float_v(0.f);
   float_v z = t.Z();
   z = (200.f - CAMath::Abs(z)) * 0.01f;
-  z(z < zero) = zero;
+//  z(z < zero) = zero;
+  z = KFP::SIMD::select( z < zero, zero, z );
 
   const uint_v type = errorType( static_cast<int_v>( rowIndexes ) );
 
   float_v sin2Phi = t.GetSinPhi()*t.GetSinPhi();
   float_v cos2Phi = (one - sin2Phi);
-  cos2Phi(cos2Phi < 0.0001f) = 0.0001f;
-  float_v tg2Phi = sin2Phi/cos2Phi;
+//  cos2Phi(cos2Phi < 0.0001f) = 0.0001f;
+  cos2Phi = KFP::SIMD::select( cos2Phi < 0.0001f, 0.0001f, cos2Phi );
+  float_v tg2Phi = sin2Phi / cos2Phi;
 
   float_v tg2Lambda = t.DzDs()*t.DzDs();
 
   const float *c = &fParamS0Par[0][0][0];
-  const float_v errmin=1e-6f;
+  const float_v errmin = 1e-6f;
   float_v v, v1, v2, v4, v5;
-  for( unsigned int i = 0; i < float_v::Size; i++ ) {
+  for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
     const float *c_temp = &c[(unsigned int)type[i]];
-    v[i]  = c_temp[0];
-    v1[i] = c_temp[1];
-    v2[i] = c_temp[2];
+    v.insert(i, c_temp[0]);//[ i]  = c_temp[0];
+    v1.insert(i, c_temp[1]);//[i] = c_temp[1];
+    v2.insert(i, c_temp[2]);//[i] = c_temp[2];
 //    v3[i] = c_temp[3];
-    v4[i] = c_temp[4];
-    v5[i] = c_temp[5];
+    v4.insert(i, c_temp[4]);//[i] = c_temp[4];
+    v5.insert(i, c_temp[5]);//[i] = c_temp[5];
   }
   v += z * v1/cos2Phi +  v2 *tg2Phi;
 #if 0
   v(v>one) = one;
 #endif
-  v(v<errmin) = errmin;
+//  v(v<errmin) = errmin;
+  v = KFP::SIMD::select( v < errmin, errmin, v );
   *Err2Y = CAMath::Abs( v );
 #ifdef VC_GATHER_SCATTER
   v.gather( c+3, type );
 #else
-  for( unsigned int i = 0; i < float_v::Size; i++ ) {
-      v[i] = c[(unsigned int)type[i] + 3];
+  for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+      v.insert(i, c[(unsigned int)type[i] + 3]);//[i] = c[(unsigned int)type[i] + 3];
   }
 #endif
   v += z * v4*(one + tg2Lambda) + v5*tg2Lambda;
 #if 0
   v(v>one) = one;
 #endif
-  v(v<errmin) = errmin;
+//  v(v<errmin) = errmin;
+  v = KFP::SIMD::select( v < errmin, errmin, v );
   *Err2Z = CAMath::Abs( v );
 }
 

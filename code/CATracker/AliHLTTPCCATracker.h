@@ -106,8 +106,10 @@ class AliHLTTPCCATracker
     void SetNTracklets(int nTrlets) { fNTracklets = nTrlets; }
 
     const AliHLTTPCCAStartHitId &TrackletStartHit( int i ) const { return fTrackletStartHits[i]; }
-    Vc::vector<AliHLTTPCCAStartHitId>& TrackletStartHits() { return fTrackletStartHits; }
-    const Vc::vector<AliHLTTPCCAStartHitId>& TrackletStartHits() const { return fTrackletStartHits; }
+//    Vc::vector<AliHLTTPCCAStartHitId>& TrackletStartHits() { return fTrackletStartHits; }
+//    const Vc::vector<AliHLTTPCCAStartHitId>& TrackletStartHits() const { return fTrackletStartHits; }
+    std::vector<AliHLTTPCCAStartHitId>& TrackletStartHits() { return fTrackletStartHits; }
+    const std::vector<AliHLTTPCCAStartHitId>& TrackletStartHits() const { return fTrackletStartHits; }
 
     size_t NTracks() const { return fTracks.size(); }
     const std::vector<AliHLTTPCCATrack *> &Tracks() const { return fTracks; }
@@ -150,7 +152,8 @@ class AliHLTTPCCATracker
     int   fTrackMemorySize; // size of the event memory [bytes]
 
 
-    Vc::vector<AliHLTTPCCAStartHitId> fTrackletStartHits;   // start hits for the tracklets
+//    Vc::vector<AliHLTTPCCAStartHitId> fTrackletStartHits;   // start hits for the tracklets
+    std::vector<AliHLTTPCCAStartHitId> fTrackletStartHits;   // start hits for the tracklets
 
     int fNTracklets;     // number of tracklets
     AliHLTResizableArray<TrackletVector> fTrackletVectors; // tracklet data

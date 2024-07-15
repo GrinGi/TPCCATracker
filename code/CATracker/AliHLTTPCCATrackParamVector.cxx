@@ -54,8 +54,8 @@ AliHLTTPCCATrackParamVector::AliHLTTPCCATrackParamVector(const AliHLTTPCCATrackP
 }
 
 void AliHLTTPCCATrackParamVector::NormilizeSignCosPhi( const AliHLTTPCCATrackLinearisationVector& l, const float_m &m ) {
-  SetSignCosPhi( float_v(Vc::One),  m && (l.CosPhi() >= float_v(Vc::Zero)) );
-  SetSignCosPhi( float_v(-1.f), m && (l.CosPhi() < float_v(Vc::Zero)) );
+  SetSignCosPhi( float_v( 1.f ),  m && (l.CosPhi() >= float_v( 0.f )) );
+  SetSignCosPhi( float_v( -1.f ), m && (l.CosPhi()  < float_v( 0.f )) );
 }
 
 float_v AliHLTTPCCATrackParamVector::GetDist2( const AliHLTTPCCATrackParamVector &t ) const
@@ -90,7 +90,8 @@ float_v  AliHLTTPCCATrackParamVector::GetS( const float_v &_x, const float_v &_y
   float_v dS = x * ex + y * ey;
   const float_m &mask = CAMath::Abs( k ) > 1.e-4f;
   if ( !mask.isEmpty() ) {
-    dS( mask ) = CAMath::ATan2( k * dS, 1 + k * ( x * ey - y * ex ) ) / k;
+//    dS( mask ) = CAMath::ATan2( k * dS, 1 + k * ( x * ey - y * ex ) ) / k;
+    dS = KFP::SIMD::select( mask, CAMath::ATan2( k * dS, 1 + k * ( x * ey - y * ex ) ) / k, dS );
   }
   return dS;
 }
@@ -116,7 +117,8 @@ void  AliHLTTPCCATrackParamVector::GetDCAPoint( const float_v &x, const float_v 
   *zp = GetZ() + GetDzDs() * s;
   const float_v dZ = CAMath::Abs( GetDzDs() * CAMath::TwoPi() / k );
   const float_m mask = CAMath::Abs( k ) > 1.e-2f && dZ > .1f;
-  ( *zp )( mask ) += CAMath::Round( ( z - *zp ) / dZ ) * dZ;
+//  ( *zp )( mask ) += CAMath::Round( ( z - *zp ) / dZ ) * dZ;
+  (*zp) = KFP::SIMD::select( mask, *zp + CAMath::Round( ( z - *zp ) / dZ ) * dZ, *zp );
 }
 
 
@@ -143,7 +145,8 @@ float_m AliHLTTPCCATrackParamVector::TransportToX( const float_v &x, AliHLTTPCCA
   // check for intersection with X=x
 
   float_v ex1 = CAMath::Sqrt( 1.f - ey1 * ey1 );
-  ex1( ex < float_v(Vc::Zero) ) = -ex1;
+//  ex1( ex < float_v( 0.f ) ) = -ex1;
+  ex1 = KFP::SIMD::select( ex < float_v( 0.f ), -ex1, ex1 );
 
   const float_v dx2 = dx * dx;
   const float_v ss = ey + ey1;
@@ -160,14 +163,17 @@ float_m AliHLTTPCCATrackParamVector::TransportToX( const float_v &x, AliHLTTPCCA
   const float_v dy = dx * tg;
   float_v dl = dx * CAMath::Sqrt( 1.f + tg * tg );
 
-  dl( cc < float_v(Vc::Zero) ) = -dl;
-  const float_v dSin = CAMath::Max( float_v( -1.f ), CAMath::Min( float_v( Vc::One ), dl * k * 0.5f ) );
+//  dl( cc < float_v( 0.f ) ) = -dl;
+  dl = KFP::SIMD::select( cc < float_v( 0.f ), -dl, dl );
+  const float_v dSin = CAMath::Max( float_v( -1.f ), CAMath::Min( float_v( 1.f ), dl * k * 0.5f ) );
   float_v dS = dl;
-  dS( CAMath::Abs( k ) > float_v(1.e-4f) )  = ( float_v(2.f) * CAMath::ASin( dSin ) / k );
+//  dS( CAMath::Abs( k ) > float_v(1.e-4f) )  = ( float_v(2.f) * CAMath::ASin( dSin ) / k );
+  dS = KFP::SIMD::select( CAMath::Abs( k ) > float_v(1.e-4f), ( float_v(2.f) * CAMath::ASin( dSin ) / k ), dS );
   const float_v dz = dS * t0.DzDs();
 
   if ( DL ) {
-    ( *DL )( mask ) = -dS * CAMath::Sqrt( 1.f + t0.DzDs() * t0.DzDs() );
+//    ( *DL )( mask ) = -dS * CAMath::Sqrt( 1.f + t0.DzDs() * t0.DzDs() );
+    *DL = KFP::SIMD::select( mask, -dS * CAMath::Sqrt( 1.f + t0.DzDs() * t0.DzDs() ), *DL );
   }
 
   const float_v d[3] = { fP[2] - t0.SinPhi(), fP[3] - t0.DzDs(), fP[4] - t0.QPt() };
@@ -182,16 +188,23 @@ float_m AliHLTTPCCATrackParamVector::TransportToX( const float_v &x, AliHLTTPCCA
   const float_v h4 = dx2 * ( cc + ss * ey1 * ex1i ) * cci * cci * Bz;
   const float_v dxBz = dx * Bz;
 
-  ex1( !mask ) = ex;
-  ey1( !mask ) = ey;
+//  ex1( !mask ) = ex;
+//  ey1( !mask ) = ey;
+  ex1 = KFP::SIMD::select( !mask, ex, ex1 );
+  ey1 = KFP::SIMD::select( !mask, ey, ey1 );
   t0.SetCosPhi( ex1 );
   t0.SetSinPhi( ey1 );
 
-  fX( mask )    = X() + dx;
-  fP[0]( mask ) = Y() + dy     + h2 * d[0]           +   h4 * d[2];
-  fP[1]( mask ) = Z() + dz               + dS * d[1];
-  fP[2]( mask ) = t0.SinPhi() +     d[0]           + dxBz * d[2];
-  fP[2]( CAMath::Abs(fP[2]) > maxSinPhi ) = t0.SinPhi();
+//  fX( mask )    = X() + dx;
+//  fP[0]( mask ) = Y() + dy     + h2 * d[0]           +   h4 * d[2];
+//  fP[1]( mask ) = Z() + dz               + dS * d[1];
+//  fP[2]( mask ) = t0.SinPhi() +     d[0]           + dxBz * d[2];
+//  fP[2]( CAMath::Abs(fP[2]) > maxSinPhi ) = t0.SinPhi();
+  fX = KFP::SIMD::select( mask, X() + dx, fX );
+  fP[0] = KFP::SIMD::select( mask, Y() + dy + h2 * d[0] + h4 * d[2], fP[0] );
+  fP[1] = KFP::SIMD::select( mask, Z() + dz + dS * d[1], fP[1] );
+  fP[2] = KFP::SIMD::select( mask, t0.SinPhi() + d[0] + dxBz * d[2], fP[2] );
+  fP[2] = KFP::SIMD::select( CAMath::Abs(fP[2]) > maxSinPhi, t0.SinPhi(), fP[2] );
 
   const float_v c00 = fC[0];
   const float_v c10 = fC[1];
@@ -209,26 +222,41 @@ float_m AliHLTTPCCATrackParamVector::TransportToX( const float_v &x, AliHLTTPCCA
   const float_v c43 = fC[13];
   const float_v c44 = fC[14];
 
-  fC[0]( mask ) = ( c00  + h2 * h2 * c22 + h4 * h4 * c44
-            + 2.f * ( h2 * c20 + h4 * c40 + h2 * h4 * c42 )  );
+//  fC[0]( mask ) = ( c00  + h2 * h2 * c22 + h4 * h4 * c44
+//            + 2.f * ( h2 * c20 + h4 * c40 + h2 * h4 * c42 )  );
+  fC[0] = KFP::SIMD::select( mask, c00  + h2 * h2 * c22 + h4 * h4 * c44 + 2.f * ( h2 * c20 + h4 * c40 + h2 * h4 * c42 ), fC[0] );
 
-  fC[1]( mask ) = c10 + h2 * c21 + h4 * c41 + dS * ( c30 + h2 * c32 + h4 * c43 );
-  fC[2]( mask ) = c11 + 2.f * dS * c31 + dS * dS * c33;
+//  fC[1]( mask ) = c10 + h2 * c21 + h4 * c41 + dS * ( c30 + h2 * c32 + h4 * c43 );
+//  fC[2]( mask ) = c11 + 2.f * dS * c31 + dS * dS * c33;
+  fC[1] = KFP::SIMD::select( mask, c10 + h2 * c21 + h4 * c41 + dS * ( c30 + h2 * c32 + h4 * c43 ), fC[1] );
+  fC[2] = KFP::SIMD::select( mask, c11 + 2.f * dS * c31 + dS * dS * c33, fC[2] );
 
-  fC[3]( mask ) = c20 + h2 * c22 + h4 * c42 + dxBz * ( c40 + h2 * c42 + h4 * c44 );
-  fC[4]( mask ) = c21 + dS * c32 + dxBz * ( c41 + dS * c43 );
-  fC[5]( mask ) = c22 + 2.f * dxBz * c42 + dxBz * dxBz * c44;
+//  fC[3]( mask ) = c20 + h2 * c22 + h4 * c42 + dxBz * ( c40 + h2 * c42 + h4 * c44 );
+//  fC[4]( mask ) = c21 + dS * c32 + dxBz * ( c41 + dS * c43 );
+//  fC[5]( mask ) = c22 + 2.f * dxBz * c42 + dxBz * dxBz * c44;
+  fC[3] = KFP::SIMD::select( mask, c20 + h2 * c22 + h4 * c42 + dxBz * ( c40 + h2 * c42 + h4 * c44 ), fC[3] );
+  fC[4] = KFP::SIMD::select( mask, c21 + dS * c32 + dxBz * ( c41 + dS * c43 ), fC[4] );
+  fC[5] = KFP::SIMD::select( mask, c22 + 2.f * dxBz * c42 + dxBz * dxBz * c44, fC[5] );
 
-  fC[6]( mask ) = c30 + h2 * c32 + h4 * c43;
-  fC[7]( mask ) = c31 + dS * c33;
-  fC[8]( mask ) = c32 + dxBz * c43;
-  fC[9]( mask ) = c33;
+//  fC[6]( mask ) = c30 + h2 * c32 + h4 * c43;
+//  fC[7]( mask ) = c31 + dS * c33;
+//  fC[8]( mask ) = c32 + dxBz * c43;
+//  fC[9]( mask ) = c33;
+  fC[6] = KFP::SIMD::select( mask, c30 + h2 * c32 + h4 * c43, fC[6] );
+  fC[7] = KFP::SIMD::select( mask, c31 + dS * c33, fC[7] );
+  fC[8] = KFP::SIMD::select( mask, c32 + dxBz * c43, fC[8] );
+  fC[9] = KFP::SIMD::select( mask, c33, fC[9] );
 
-  fC[10]( mask ) = c40 + h2 * c42 + h4 * c44;
-  fC[11]( mask ) = c41 + dS * c43;
-  fC[12]( mask ) = c42 + dxBz * c44;
-  fC[13]( mask ) = c43;
-  fC[14]( mask ) = c44;
+//  fC[10]( mask ) = c40 + h2 * c42 + h4 * c44;
+//  fC[11]( mask ) = c41 + dS * c43;
+//  fC[12]( mask ) = c42 + dxBz * c44;
+//  fC[13]( mask ) = c43;
+//  fC[14]( mask ) = c44;
+  fC[10] = KFP::SIMD::select( mask, c40 + h2 * c42 + h4 * c44, fC[10] );
+  fC[11] = KFP::SIMD::select( mask, c41 + dS * c43, fC[11] );
+  fC[12] = KFP::SIMD::select( mask, c42 + dxBz * c44, fC[12] );
+  fC[13] = KFP::SIMD::select( mask, c43, fC[13] );
+  fC[14] = KFP::SIMD::select( mask, c44, fC[14] );
 
   debugKF() << mask << "\n" << *this << std::endl;
   return mask;
@@ -322,14 +350,16 @@ float_v AliHLTTPCCATrackParamVector::BetheBlochGeant( const float_v &bg2,
   const float_v &maxT = _2me * bg2;    // neglecting the electron mass
 
   //*** Density effect
-  float_v d2( Vc::Zero );
+  float_v d2( 0.f );
   const float_v x = 0.5f * CAMath::Log( bg2 );
   const float_v lhwI = CAMath::Log( 28.816f * 1e-9f * CAMath::Sqrt( rho * mZA ) / mI );
-  d2( x > x1 ) = lhwI + x - 0.5f;
+//  d2( x > x1 ) = lhwI + x - 0.5f;
+  d2 = KFP::SIMD::select( x > x1, lhwI + x - 0.5f, d2 );
   const float_v &r = ( x1 - x ) / ( x1 - x0 );
-  d2( x > x0 && x <= x1 ) = lhwI + x - 0.5f + ( 0.5f - lhwI - x0 ) * r * r * r;
+//  d2( x > x0 && x <= x1 ) = lhwI + x - 0.5f + ( 0.5f - lhwI - x0 ) * r * r * r;
+  d2 = KFP::SIMD::select( x > x0 && x <= x1, lhwI + x - 0.5f + ( 0.5f - lhwI - x0 ) * r * r * r, d2 );
 
-  return mK*mZA*( float_v( Vc::One ) + bg2 ) / bg2*( 0.5f*CAMath::Log( maxT * maxT / ( mI*mI ) ) - bg2 / ( float_v( Vc::One ) + bg2 ) - d2 );
+  return mK*mZA*( float_v( 1.f ) + bg2 ) / bg2*( 0.5f*CAMath::Log( maxT * maxT / ( mI*mI ) ) - bg2 / ( float_v( 1.f ) + bg2 ) - d2 );
 }
 
 float_v AliHLTTPCCATrackParamVector::BetheBlochSolid( const float_v &bg )
@@ -373,16 +403,19 @@ float_v AliHLTTPCCATrackParamVector::ApproximateBetheBloch( const float_v &beta2
   // (the approximation is reasonable only for solid materials)
   //------------------------------------------------------------------
 
-  const float_v &beta2_1subBeta2 = beta2 / ( float_v( Vc::One ) - beta2 ); // beta2 * CAMath::Reciprocal( float_v( Vc::One ) - beta2 );
+  const float_v &beta2_1subBeta2 = beta2 / ( float_v( 1.f ) - beta2 ); // beta2 * CAMath::Reciprocal( float_v( Vc::One ) - beta2 );
   const float_v &_0p000153_beta2 = 0.153e-3f / beta2;
   const float log_3p5mul5940 = 9.942227380852058f; // log( 3.5 * 5940 )
   const float log_5940 = 8.68946441235669f; // log( 5940 )
   const float_v &log_beta2_1subBeta2 = CAMath::Log( beta2_1subBeta2 );
 
   float_v ret = _0p000153_beta2 * ( log_5940 + log_beta2_1subBeta2 - beta2 );
-  ret( beta2_1subBeta2 > 3.5f*3.5f ) =
-    _0p000153_beta2 * ( log_3p5mul5940 + 0.5f * log_beta2_1subBeta2 - beta2 );
-  ret.setZero( beta2 >= float_v( Vc::One ) );
+//  ret( beta2_1subBeta2 > 3.5f*3.5f ) =
+//    _0p000153_beta2 * ( log_3p5mul5940 + 0.5f * log_beta2_1subBeta2 - beta2 );
+  ret = KFP::SIMD::select( beta2_1subBeta2 > 3.5f * 3.5f,
+                          _0p000153_beta2 * (log_3p5mul5940 + 0.5f * log_beta2_1subBeta2 - beta2), ret );
+//  ret.setZero( beta2 >= float_v( 1.f ) );
+  ret = KFP::SIMD::select( beta2 >= float_v( 1.f ), 0.f, ret );
   return ret;
 }
 
@@ -391,14 +424,17 @@ void AliHLTTPCCATrackParamVector::CalculateFitParameters( AliHLTTPCCATrackFitPar
 {
   //*!
 
-  const float_v p2 = ( float_v( Vc::One ) + fP[3] * fP[3] );
+  const float_v p2 = ( float_v( 1.f ) + fP[3] * fP[3] );
   float_v k2 = fP[4] * fP[4];
   const float_v mass2 = mass * mass;
   const float_v beta2 = p2 / ( p2 + mass2 * k2 );
 
   const float_m badK2 = k2 <= 1.e-8f;
-  k2(badK2) = 1.f;
-  float_v pp2 = 10000.f; pp2( !badK2 ) = p2 / k2; // impuls 2
+//  k2(badK2) = 1.f;
+  k2 = KFP::SIMD::select( badK2, 1.f, k2 );
+  float_v pp2 = 10000.f;
+//  pp2( !badK2 ) = p2 / k2; // impuls 2
+  pp2 = KFP::SIMD::select( !badK2, p2 / k2, pp2 );
 
   //par.fBethe = BetheBlochGas( pp2/mass2);
   par.fBethe = ApproximateBetheBloch( pp2 / mass2 );
@@ -412,7 +448,7 @@ void AliHLTTPCCATrackParamVector::CalculateFitParameters( AliHLTTPCCATrackFitPar
   par.fSigmadE2 = knst * par.fEP2 * fP[4];
   par.fSigmadE2 = par.fSigmadE2 * par.fSigmadE2;
 
-  par.fK22 = ( float_v( Vc::One ) + fP[3] * fP[3] );
+  par.fK22 = ( float_v( 1.f ) + fP[3] * fP[3] );
   par.fK33 = par.fK22 * par.fK22;
   par.fK43 = fP[3] * fP[4] * par.fK22;
   par.fK44 = fP[3] * fP[3] * fP[4] * fP[4];
@@ -439,24 +475,34 @@ float_m AliHLTTPCCATrackParamVector::CorrectForMeanMaterial( const float_v &xOve
 
   const float_v &dE = par.fBethe * xTimesRho;
   float_m mask = _mask && CAMath::Abs( dE ) <= 0.3f * par.fE; //30% energy loss is too much!
-  const float_v &corr = ( float_v( Vc::One ) - par.fEP2 * dE );
+  const float_v &corr = ( float_v( 1.f ) - par.fEP2 * dE );
   mask &= corr >= 0.3f && corr <= 1.3f;
 
-  fP[4]( mask ) *= corr;
-  fC40 ( mask ) *= corr;
-  fC41 ( mask ) *= corr;
-  fC42 ( mask ) *= corr;
-  fC43 ( mask ) *= corr;
-  fC44 ( mask ) *= corr * corr;
-  fC44 ( mask ) += par.fSigmadE2 * CAMath::Abs( dE );
+//  fP[4]( mask ) *= corr;
+//  fC40 ( mask ) *= corr;
+//  fC41 ( mask ) *= corr;
+//  fC42 ( mask ) *= corr;
+//  fC43 ( mask ) *= corr;
+//  fC44 ( mask ) *= corr * corr;
+//  fC44 ( mask ) += par.fSigmadE2 * CAMath::Abs( dE );
+  fP[4] = KFP::SIMD::select( mask, fP[4] * corr, fP[4] );
+  fC40 = KFP::SIMD::select( mask, fC40 * corr, fC40 );
+  fC41 = KFP::SIMD::select( mask, fC41 * corr, fC41 );
+  fC42 = KFP::SIMD::select( mask, fC42 * corr, fC42 );
+  fC43 = KFP::SIMD::select( mask, fC43 * corr, fC43 );
+  fC44 = KFP::SIMD::select( mask, fC44 * corr * corr + par.fSigmadE2 * CAMath::Abs( dE ), fC44 );
 
   //Multiple scattering******************
 
   const float_v &theta2 = par.fTheta2 * CAMath::Abs( xOverX0 );
-  fC22( mask ) += theta2 * par.fK22 * ( float_v( Vc::One ) - fP[2] * fP[2] );
-  fC33( mask ) += theta2 * par.fK33;
-  fC43( mask ) += theta2 * par.fK43;
-  fC44( mask ) += theta2 * par.fK44;
+//  fC22( mask ) += theta2 * par.fK22 * ( float_v( 1.f ) - fP[2] * fP[2] );
+//  fC33( mask ) += theta2 * par.fK33;
+//  fC43( mask ) += theta2 * par.fK43;
+//  fC44( mask ) += theta2 * par.fK44;
+  fC22 = KFP::SIMD::select( mask, fC22 + theta2 * par.fK22 * ( float_v( 1.f ) - fP[2] * fP[2] ), fC22 );
+  fC33 = KFP::SIMD::select( mask, fC33 + theta2 * par.fK33, fC33 );
+  fC43 = KFP::SIMD::select( mask, fC43 + theta2 * par.fK43, fC43 );
+  fC44 = KFP::SIMD::select( mask, fC44 + theta2 * par.fK44, fC44 );
 
   return mask;
 }
@@ -492,17 +538,27 @@ float_m AliHLTTPCCATrackParamVector::Rotate( const float_v &alpha, AliHLTTPCCATr
 
   SetSinPhi( sinPhi + j2*d, ReturnMask );
 
-  fC[0](ReturnMask) *= j0 * j0;
-  fC[1](ReturnMask) *= j0;
-  fC[3](ReturnMask) *= j0;
-  fC[6](ReturnMask) *= j0;
-  fC[10](ReturnMask) *= j0;
+//  fC[0](ReturnMask) *= j0 * j0;
+//  fC[1](ReturnMask) *= j0;
+//  fC[3](ReturnMask) *= j0;
+//  fC[6](ReturnMask) *= j0;
+//  fC[10](ReturnMask) *= j0;
+  fC[0] = KFP::SIMD::select( ReturnMask, fC[0] * j0 * j0, fC[0] );
+  fC[1] = KFP::SIMD::select( ReturnMask, fC[1] * j0, fC[1] );
+  fC[3] = KFP::SIMD::select( ReturnMask, fC[3] * j0, fC[3] );
+  fC[6] = KFP::SIMD::select( ReturnMask, fC[6] * j0, fC[6] );
+  fC[10] = KFP::SIMD::select( ReturnMask, fC[10] * j0, fC[10] );
 
-  fC[3](ReturnMask) *= j2;
-  fC[4](ReturnMask) *= j2;
-  fC[5](ReturnMask) *= j2 * j2;
-  fC[8](ReturnMask) *= j2;
-  fC[12](ReturnMask) *= j2;
+//  fC[3](ReturnMask) *= j2;
+//  fC[4](ReturnMask) *= j2;
+//  fC[5](ReturnMask) *= j2 * j2;
+//  fC[8](ReturnMask) *= j2;
+//  fC[12](ReturnMask) *= j2;
+  fC[3] = KFP::SIMD::select( ReturnMask, fC[3] * j2, fC[3] );
+  fC[4] = KFP::SIMD::select( ReturnMask, fC[4] * j2, fC[4] );
+  fC[5] = KFP::SIMD::select( ReturnMask, fC[5] * j2 * j2, fC[5] );
+  fC[8] = KFP::SIMD::select( ReturnMask, fC[8] * j2, fC[8] );
+  fC[12] = KFP::SIMD::select( ReturnMask, fC[12] * j2, fC[12] );
 
   return ReturnMask;
 }
@@ -529,7 +585,7 @@ float_m AliHLTTPCCATrackParamVector::FilterWithMaterial( const float_v &y, const
 //  float c43 = fC[13];
 //  float c44 = fC[14];
   
-  float_v d = float_v( Vc::One ) / ( err2Y*err2Z + err2Y*c11 + err2Z*c00 + c00*c11 - c10*c10 );
+  float_v d = float_v( 1.f ) / ( err2Y*err2Z + err2Y*c11 + err2Z*c00 + c00*c11 - c10*c10 );
   err2Y += c00;
   err2Z += c11;
 
@@ -557,34 +613,56 @@ float_m AliHLTTPCCATrackParamVector::FilterWithMaterial( const float_v &y, const
 
   success &= CAMath::Abs( sinPhi ) < maxSinPhi;
 
-  fNDF( static_cast<int_m>(success) )  += 2;
-  fChi2(success) += mS0 * z0 * z0 + mS2 * z1 * z1 + 2 * z0 * z1 * mS1;
+//  fNDF( static_cast<int_m>(success) )  += 2;
+//  fChi2(success) += mS0 * z0 * z0 + mS2 * z1 * z1 + 2 * z0 * z1 * mS1;
+  fNDF = KFP::SIMD::select( success, fNDF + 2, fNDF );
+  fChi2 = KFP::SIMD::select( success, fChi2 + mS0 * z0 * z0 + mS2 * z1 * z1 + 2 * z0 * z1 * mS1, fChi2 );
 
-  fP[ 0](success) += k00 * z0 + k01 * z1;
-  fP[ 1](success) += k10 * z0 + k11 * z1;
-  fP[ 2](success) = sinPhi ;
-  fP[ 3](success) += k30 * z0 + k31 * z1;
-  fP[ 4](success) += k40 * z0 + k41 * z1;
+//  fP[ 0](success) += k00 * z0 + k01 * z1;
+//  fP[ 1](success) += k10 * z0 + k11 * z1;
+//  fP[ 2](success) = sinPhi ;
+//  fP[ 3](success) += k30 * z0 + k31 * z1;
+//  fP[ 4](success) += k40 * z0 + k41 * z1;
+  fP[ 0] = KFP::SIMD::select( success, fP[ 0] + k00 * z0 + k01 * z1, fP[ 0] );
+  fP[ 1] = KFP::SIMD::select( success, fP[ 1] + k10 * z0 + k11 * z1, fP[ 1] );
+  fP[ 2] = KFP::SIMD::select( success, sinPhi, fP[ 2] );
+  fP[ 3] = KFP::SIMD::select( success, fP[ 3] + k30 * z0 + k31 * z1, fP[ 3] );
+  fP[ 4] = KFP::SIMD::select( success, fP[ 4] + k40 * z0 + k41 * z1, fP[ 4] );
 
-  fC[ 0](success) -= (k00 * c00 + k01 * c10); //c00
+//  fC[ 0](success) -= (k00 * c00 + k01 * c10); //c00
+  fC[ 0] = KFP::SIMD::select( success, fC[ 0] - (k00 * c00 + k01 * c10), fC[ 0] );
   
-  fC[ 1](success) -= (k10 * c00 + k11 * c10); //c10
-  fC[ 2](success) -= (k10 * c10 + k11 * c11); //c11
+//  fC[ 1](success) -= (k10 * c00 + k11 * c10); //c10
+//  fC[ 2](success) -= (k10 * c10 + k11 * c11); //c11
+  fC[ 1] = KFP::SIMD::select( success, fC[ 1] - (k10 * c00 + k11 * c10), fC[ 1] );
+  fC[ 2] = KFP::SIMD::select( success, fC[ 2] - (k10 * c10 + k11 * c11), fC[ 2] );
   
-  fC[ 3](success) -= (k20 * c00 + k21 * c10); //c20
-  fC[ 4](success) -= (k20 * c10 + k21 * c11); //c21
-  fC[ 5](success) -= (k20 * c20 + k21 * c21); //c22
+//  fC[ 3](success) -= (k20 * c00 + k21 * c10); //c20
+//  fC[ 4](success) -= (k20 * c10 + k21 * c11); //c21
+//  fC[ 5](success) -= (k20 * c20 + k21 * c21); //c22
+  fC[ 3] = KFP::SIMD::select( success, fC[ 3] - (k20 * c00 + k21 * c10), fC[ 3] );
+  fC[ 4] = KFP::SIMD::select( success, fC[ 4] - (k20 * c10 + k21 * c11), fC[ 4] );
+  fC[ 5] = KFP::SIMD::select( success, fC[ 5] - (k20 * c20 + k21 * c21), fC[ 5] );
   
-  fC[ 6](success) -= (k30 * c00 + k31 * c10); //c30
-  fC[ 7](success) -= (k30 * c10 + k31 * c11); //c31
-  fC[ 8](success) -= (k30 * c20 + k31 * c21); //c32
-  fC[ 9](success) -= (k30 * c30 + k31 * c31); //c33
+//  fC[ 6](success) -= (k30 * c00 + k31 * c10); //c30
+//  fC[ 7](success) -= (k30 * c10 + k31 * c11); //c31
+//  fC[ 8](success) -= (k30 * c20 + k31 * c21); //c32
+//  fC[ 9](success) -= (k30 * c30 + k31 * c31); //c33
+  fC[ 6] = KFP::SIMD::select( success, fC[ 6] - (k30 * c00 + k31 * c10), fC[ 6] );
+  fC[ 7] = KFP::SIMD::select( success, fC[ 7] - (k30 * c10 + k31 * c11), fC[ 7] );
+  fC[ 8] = KFP::SIMD::select( success, fC[ 8] - (k30 * c20 + k31 * c21), fC[ 8] );
+  fC[ 9] = KFP::SIMD::select( success, fC[ 9] - (k30 * c30 + k31 * c31), fC[ 9] );
 
-  fC[10](success) -= (k40 * c00 + k41 * c10); //c40
-  fC[11](success) -= (k40 * c10 + k41 * c11); //c41
-  fC[12](success) -= (k40 * c20 + k41 * c21); //c42
-  fC[13](success) -= (k40 * c30 + k41 * c31); //c43
-  fC[14](success) -= (k40 * c40 + k41 * c41); //c44
+//  fC[10](success) -= (k40 * c00 + k41 * c10); //c40
+//  fC[11](success) -= (k40 * c10 + k41 * c11); //c41
+//  fC[12](success) -= (k40 * c20 + k41 * c21); //c42
+//  fC[13](success) -= (k40 * c30 + k41 * c31); //c43
+//  fC[14](success) -= (k40 * c40 + k41 * c41); //c44
+  fC[10] = KFP::SIMD::select( success, fC[10] - (k40 * c00 + k41 * c10), fC[10] );
+  fC[11] = KFP::SIMD::select( success, fC[11] - (k40 * c10 + k41 * c11), fC[11] );
+  fC[12] = KFP::SIMD::select( success, fC[12] - (k40 * c20 + k41 * c21), fC[12] );
+  fC[13] = KFP::SIMD::select( success, fC[13] - (k40 * c30 + k41 * c31), fC[13] );
+  fC[14] = KFP::SIMD::select( success, fC[14] - (k40 * c40 + k41 * c41), fC[14] );
   
   return success;
 }
@@ -593,9 +671,9 @@ float_m AliHLTTPCCATrackParamVector::FilterWithMaterial( const float_v &y, const
 
 std::istream &operator>>( std::istream &in, AliHLTTPCCATrackParamVector &t )
 {
-  Vc::array<float, float_v::Size> x, s, p[5], c[15], chi2;
-  Vc::array<int, int_v::Size> ndf;
-  for ( unsigned int j = 0; j < uint_v::Size; ++j ) {
+  std::array<float, float_v::SimdLen> x, s, p[5], c[15], chi2;
+  std::array<int, int_v::SimdLen> ndf;
+  for ( unsigned int j = 0; j < uint_v::SimdLen; ++j ) {
     in >> x[j];
     in >> s[j];
     for ( int i = 0; i < 5; i++ ) in >> p[i][j];
@@ -639,7 +717,7 @@ std::ostream &operator<<( std::ostream &out, const AliHLTTPCCATrackParamVector &
 //     out << std::setprecision( 6 );
 //     return out << std::endl;
 //   }
-  for ( unsigned int j = 0; j < uint_v::Size; ++j ) {
+  for ( unsigned int j = 0; j < uint_v::SimdLen; ++j ) {
     out << t.X()[j] << " "
         << t.SignCosPhi()[j] << " "
         << t.Chi2()[j] << " "

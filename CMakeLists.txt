@@ -4,8 +4,8 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # set( CMAKE_VERBOSE_MAKEFILE on )
 
-find_package(Vc REQUIRED)
-include_directories(${VC_INCLUDE_DIR})
+#find_package(Vc REQUIRED)
+#include_directories(${VC_INCLUDE_DIR})
 
 find_package(SSE)
 #find_package(TBB REQUIRED)
@@ -18,10 +18,10 @@ if(NOT CMAKE_BUILD_TYPE)
 endif(NOT CMAKE_BUILD_TYPE)
 
 set(COMPILE_FOR_MIC FALSE CACHE BOOL "Compile for mic card.")
-if(COMPILE_FOR_MIC)
-   set(VC_LIBRARIES "${VC_MIC_LIBRARIES}")
-   message("${VC_LIBRARIES} will be used")
-endif(COMPILE_FOR_MIC)
+#if(COMPILE_FOR_MIC)
+#   set(VC_LIBRARIES "${VC_MIC_LIBRARIES}")
+#   message("${VC_LIBRARIES} will be used")
+#endif(COMPILE_FOR_MIC)
 
 find_package(TBB)
 include_directories(${TBB_INCLUDE_DIRS})
@@ -49,9 +49,9 @@ endif(ENABLE_ROOT)
 if(NUM_THREADS)
    add_definitions(-DNUM_THREADS=${NUM_THREADS})
 endif(NUM_THREADS)
-if(VC_NO_GATHER_TRICKS)
-   add_definitions(-DVC_NO_GATHER_TRICKS)
-endif(VC_NO_GATHER_TRICKS)
+#if(VC_NO_GATHER_TRICKS)
+#   add_definitions(-DVC_NO_GATHER_TRICKS)
+#endif(VC_NO_GATHER_TRICKS)
 
 macro(add_target_property _target _prop _value)
    get_target_property(_oldprop "${_target}" ${_prop})
@@ -70,8 +70,8 @@ endmacro(add_target_property)
      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmic")
      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmic")
    else(COMPILE_FOR_MIC)
-     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse -msse2")
-     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2")
+     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse -msse2 -msse4.1")
+     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -msse4.1")
    endif(COMPILE_FOR_MIC)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
@@ -234,6 +234,11 @@ endif(PROFILING)
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/code/CATracker
+  #
+  ${CMAKE_CURRENT_SOURCE_DIR}/code/CATracker/KFPSimd
+  ${CMAKE_CURRENT_SOURCE_DIR}/code/CATracker/KFPSimd/Base
+  ${CMAKE_CURRENT_SOURCE_DIR}/code/CATracker/KFPSimd/SSE
+  #
   ${CMAKE_CURRENT_SOURCE_DIR}/code/KFParticle ${CMAKE_CURRENT_SOURCE_DIR}/code/vectors
   ${CMAKE_CURRENT_SOURCE_DIR}/code/CATrackerPerformance
   ${CMAKE_CURRENT_SOURCE_DIR}/code/KFParticlePerformance
@@ -341,13 +346,13 @@ if(ENABLE_ARRAY_BOUNDS_CHECKING)
 endif(ENABLE_ARRAY_BOUNDS_CHECKING)
 
 set(USE_SIMD TRUE CACHE BOOL "When compiling on x86 use SSE Vector class instead of Simple implementation")
-if(USE_SIMD)
-# if(NOT COMPILE_FOR_MIC)
-#    add_definitions(-DVC_IMPL=SSE)
-# endif(NOT COMPILE_FOR_MIC)
-else(USE_SIMD)
-   add_definitions(-DVc_IMPL=Scalar)
-endif(USE_SIMD)
+#if(USE_SIMD)
+## if(NOT COMPILE_FOR_MIC)
+##    add_definitions(-DVC_IMPL=SSE)
+## endif(NOT COMPILE_FOR_MIC)
+#else(USE_SIMD)
+#   add_definitions(-DVc_IMPL=Scalar)
+#endif(USE_SIMD)
 set(CATrackerCode ${CATrackerCode} code/CATracker/AliHLTTPCCASliceDataVector.cxx)
 
 set(DUMP_LINKS FALSE CACHE BOOL "dump links into Links directory after NeighboursFinder")
@@ -366,7 +371,7 @@ endif(DUMP_TC_OUTPUT)
 #########################################################################################
 
 #add_executable(convertToBinary convertToBinary.cpp code/AliHLTTPCCAMCTrack.cxx)
-#target_link_libraries(convertToBinary ${ROOT_LIBS} ${VC_LIBRARIES})
+#target_link_libraries(convertToBinary ${ROOT_LIBS})# ${VC_LIBRARIES})
 
 #add_executable(benchmark benchmark.cpp)
 
@@ -379,18 +384,18 @@ endif(DUMP_TC_OUTPUT)
 
    if(ENABLE_TBB)
       add_target_property(CATracker COMPILE_FLAGS "-DUSE_TBB")
-      target_link_libraries(CATracker ${TBB_RELEASE_LIBRARIES} ${VC_LIBRARIES})
+      target_link_libraries(CATracker ${TBB_RELEASE_LIBRARIES})# ${VC_LIBRARIES})
 
       add_executable(CA_parallel CA_parallel.cpp ${CATrackerParallelCode})
-      target_link_libraries(CA_parallel CATracker ${TBB_RELEASE_LIBRARIES} ${VC_LIBRARIES})
+      target_link_libraries(CA_parallel CATracker ${TBB_RELEASE_LIBRARIES})# ${VC_LIBRARIES})
       add_target_property(CA_parallel COMPILE_FLAGS "-DHLTCA_STANDALONE")
    else(ENABLE_TBB)
    
       add_executable(CA_parallel CA_parallel.cpp ${CATrackerParallelCode})
-      target_link_libraries(CA_parallel CATracker ${VC_LIBRARIES})
+      target_link_libraries(CA_parallel CATracker)# ${VC_LIBRARIES})
       add_target_property(CA_parallel COMPILE_FLAGS "-DHLTCA_STANDALONE")
       
-      target_link_libraries(CATracker ${VC_LIBRARIES})
+      target_link_libraries(CATracker)# ${VC_LIBRARIES})
    endif(ENABLE_TBB)
 
    add_library(CATrackerPerf ${PerformanceCode})
@@ -457,9 +462,9 @@ if(NOT ROOT_FOUND) #	TODO KFParticle
    add_library(TPCCATracker ${CATrackerCode})
    if(ENABLE_TBB)
       add_target_property(TPCCATracker COMPILE_FLAGS "-DUSE_TBB")
-      target_link_libraries(TPCCATracker ${TBB_RELEASE_LIBRARIES} ${VC_LIBRARIES})
+      target_link_libraries(TPCCATracker ${TBB_RELEASE_LIBRARIES})# ${VC_LIBRARIES})
    else(ENABLE_TBB)
-      target_link_libraries(TPCCATracker ${VC_LIBRARIES})
+      target_link_libraries(TPCCATracker)# ${VC_LIBRARIES})
    endif(ENABLE_TBB)
    add_target_property(TPCCATracker COMPILE_FLAGS "-DHLTCA_STANDALONE")
    
@@ -499,7 +504,7 @@ else(NOT ROOT_FOUND)
    #  draw
 
    add_library(CATracker-draw ${CATrackerCode} ${PerformanceCode})
-   target_link_libraries(CATracker-draw ${VC_LIBRARIES} ${ROOT_LIBS})
+   target_link_libraries(CATracker-draw ${ROOT_LIBS})# ${VC_LIBRARIES})
 
    add_target_property(CATracker-draw COMPILE_FLAGS " -DMAIN_DRAW")
    
@@ -531,9 +536,9 @@ else(NOT ROOT_FOUND)
    add_library(TPCCATracker ${CATrackerCode} ${PerformanceCode})
    if(ENABLE_TBB)
       add_target_property(TPCCATracker COMPILE_FLAGS "-DUSE_TBB")
-      target_link_libraries(TPCCATracker ${ROOT_LIBS} ${TBB_RELEASE_LIBRARIES} ${VC_LIBRARIES})
+      target_link_libraries(TPCCATracker ${ROOT_LIBS} ${TBB_RELEASE_LIBRARIES})# ${VC_LIBRARIES})
    else(ENABLE_TBB)
-      target_link_libraries(TPCCATracker ${ROOT_LIBS} ${VC_LIBRARIES})
+      target_link_libraries(TPCCATracker ${ROOT_LIBS})# ${VC_LIBRARIES})
    endif(ENABLE_TBB)
 endif(NOT ROOT_FOUND)
 

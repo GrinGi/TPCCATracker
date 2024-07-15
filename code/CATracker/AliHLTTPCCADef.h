@@ -25,6 +25,7 @@
 #ifndef ALIHLTTPCCADEF_H
 #define ALIHLTTPCCADEF_H
 
+#pragma once
 
 /**
  * Definitions needed for AliHLTTPCCATracker
@@ -65,10 +66,14 @@
 //#define V7	// Without V6(V6_1) options. [1 iteration CA] + [new 3-hit seeds (exV5)]
 
 
-
+#ifndef NDEBUG
 #define NDEBUG
+#endif
+#ifndef USE_TIMERS
 #define USE_TIMERS
+#endif
 
+#ifdef USE_VC
 // ----- Vc -----
 
 #include <Vc/Vc>
@@ -92,6 +97,7 @@ using ::Vc::isfinite;
 #ifndef AVX1V
 using ::Vc::int_v;
 using ::Vc::uint_v;
+//using uint_v = int_v;
 using ::Vc::int_m;
 using ::Vc::uint_m;
 #else
@@ -101,13 +107,55 @@ typedef float_m int_m;
 typedef float_m uint_m;
 #endif
 
+#else
+/*
+ * SIMD headers
+ */
+#include "KFPSimd/simd.h"
+#include "KFPSimd/Base/simd_class.h"
+#include "KFPSimd/SSE/simd_sse_type.h"
+
+using float_v = KFP::SIMD::simd_float;
+using int_v   = KFP::SIMD::simd_int;
+using uint_v  = KFP::SIMD::simd_int;
+using float_m = KFP::SIMD::simd_mask;
+using int_m   = KFP::SIMD::simd_mask;
+using uint_m  = KFP::SIMD::simd_mask;
+#define SimdVectorAlignment float_v::SimdSize
+
+template <typename SIMDType, typename ScalType, typename Func>
+void callWithValuesSorted(SIMDType vec, Func func)
+{
+  std::vector<ScalType> values(SIMDType::SimdLen);
+  for( size_t i = 0; i < SIMDType::SimdLen; i++ ) {
+    values[i] = vec[i];
+  }
+  std::sort(values.begin(), values.end());
+  size_t prev = -1;
+  for( unsigned int i = 0; i < SIMDType::SimdLen; i++ ) {
+    if( values[i] == prev ) continue;
+    func(values[i]);
+    prev = values[i];
+  }
+}
+
+inline float_v SetByIndex(const float_v &src, const int_v &index, const float_m &mask)
+{
+  float_v result( 0.f );
+  for( unsigned int i = 0; i < int_v::SimdLen; i++ ) {
+    if( index[i] < 0 || !mask[i] ) continue;
+    result.insert(i, src[index[i]]);
+  }
+  return result;
+}
+#endif
+
 static inline uint_m validHitIndexes( const uint_v &v )
 {
 //  return (static_cast<int_v>( v ) >= int_v( Vc::Zero ) && v < std::numeric_limits<unsigned int>::max());
-  return (static_cast<int_v>( v ) >= int_v( Vc::Zero ) && v < 100000000);
+  return (static_cast<int_v>( v ) >= int_v( 0 ) && static_cast<int_v>( v ) < static_cast<int_v>( 100000000 ) );
 
 }
-
 
 /*
  * Cut for track segments to count as looper parts if QPt is less

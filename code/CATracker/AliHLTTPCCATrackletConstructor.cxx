@@ -42,7 +42,10 @@
 #endif // MAIN_DRAW
 
 #include <limits>
+
+#ifdef USE_VC
 #include <Vc/limits>
+#endif
 
 using std::endl;
 
@@ -83,14 +86,14 @@ struct AliHLTTPCCATrackletConstructor::TrackMemory {
     int_m fIsFitted;
   
   inline TrackMemory()
-    : fStartRow( Vc::Zero ),
+    : fStartRow( 0 ),
     fCurrentHitIndex( -1 ),
-    fStage( Vc::Zero ),
+    fStage( 0 ),
     fNHits( 2 ), // the first two hits are certain
     fRemainingGap( AliHLTTPCCAParameters::MaximumExtrapolationRowGap ),
-    fLastY( Vc::Zero ),
-    fLastZ( Vc::Zero ),
-    fIsFragile( Vc::Zero )
+    fLastY( 0.f ),
+    fLastZ( 0.f ),
+    fIsFragile( false )
   {}
 
   int_m IsInvalid() {
@@ -163,9 +166,10 @@ void AliHLTTPCCATrackletConstructor::FitTracklet( TrackMemory &r, const int rowI
   const uint_v oldHitIndex = static_cast<uint_v>( r.fCurrentHitIndex );
 
   int_v isUsed;
-  for( unsigned int i = 0; i < float_v::Size; i++ ) {
+  for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
     if( !active[i] ) continue;
-    isUsed[i] = fData.HitDataIsUsed( row )[(unsigned int)oldHitIndex[i]];
+    isUsed.insert( i, fData.HitDataIsUsed( row )[(unsigned int)oldHitIndex[i]] );
+//    [i] = fData.HitDataIsUsed( row )[(unsigned int)oldHitIndex[i]];
   }
   const int_m fitMask = active && ( (isUsed != int_v(2)) && (isUsed != int_v(3)) ); // mask to add a new hit. // don't take hits from other tracks. In order to reduce calculations.
 
@@ -183,8 +187,10 @@ void AliHLTTPCCATrackletConstructor::FitTracklet( TrackMemory &r, const int rowI
   VALGRIND_CHECK_VALUE_IS_DEFINED( dy );
   const float_v dz = z - r.fLastZ;
   debugF() << "dx, dy, dz: " << dx << dy << dz << endl;
-  r.fLastY( activeF ) = y;
-  r.fLastZ( activeF ) = z;
+//  r.fLastY( activeF ) = y;
+//  r.fLastZ( activeF ) = z;
+  r.fLastY = KFP::SIMD::select( activeF, y, r.fLastY );
+  r.fLastZ = KFP::SIMD::select( activeF, z, r.fLastZ );
 
   float_v err2Y, err2Z;
   float_v sinPhi = r.fParam.GetSinPhi();
@@ -192,7 +198,8 @@ void AliHLTTPCCATrackletConstructor::FitTracklet( TrackMemory &r, const int rowI
 
   const float_m fragile =
       static_cast<float_m>( r.fNHits < uint_v(AliHLTTPCCAParameters::MinimumHitsForFragileTracklet) ) || CAMath::Abs( r.fParam.SinPhi() ) >= .99f;
-  sinPhi( fragile ) = dy * CAMath::RSqrt( dx * dx + dy * dy );
+//  sinPhi( fragile ) = dy * CAMath::RSqrt( dx * dx + dy * dy );
+  sinPhi = KFP::SIMD::select( fragile, dy * CAMath::RSqrt( dx * dx + dy * dy ), sinPhi );
 
 
   assert( ( x == 0 && activeF ).isEmpty() );
@@ -204,8 +211,10 @@ void AliHLTTPCCATrackletConstructor::FitTracklet( TrackMemory &r, const int rowI
     fTracker.GetErrors2( rowIndex, r.fParam, &err2Y, &err2Z );
     const int_m hitAdded = static_cast<int_m>( r.fParam.Filter( activeF, y, z, err2Y, err2Z, .99f ) );
     trackletVector.SetRowHits( rowIndex, trackIndex, static_cast<uint_v>(r.fCurrentHitIndex), hitAdded );
-    ++r.fNHits( static_cast<uint_m>(hitAdded) );
-    r.fEndRow( hitAdded ) = rowIndex;
+//    ++r.fNHits( static_cast<uint_m>(hitAdded) );
+    r.fNHits = KFP::SIMD::select( hitAdded, r.fNHits + 1, r.fNHits );
+//    r.fEndRow( hitAdded ) = rowIndex;
+    r.fEndRow = KFP::SIMD::select( hitAdded, rowIndex, r.fEndRow );
       
     ASSERT( ( (row.NHits() > static_cast<uint_v>(oldHitIndex) ) && hitAdded ) == hitAdded,
       row.NHits() << static_cast<uint_v>(oldHitIndex) << hitAdded );
@@ -214,24 +223,29 @@ void AliHLTTPCCATrackletConstructor::FitTracklet( TrackMemory &r, const int rowI
 #ifdef VC_GATHER_SCATTER
   r.fCurrentHitIndex.gather( fData.HitLinkUpData( row ), static_cast<uint_v>( oldHitIndex ), active ); // set to next linked hit
 #else
-  for( unsigned int i = 0; i < float_v::Size; i++ ) {
+  for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
     if( !active[i] ) continue;
-    r.fCurrentHitIndex[i] = fData.HitLinkUpData( row )[(unsigned int)oldHitIndex[i]];
+    r.fCurrentHitIndex.insert( i, fData.HitLinkUpData( row )[(unsigned int)oldHitIndex[i]]);
+//    [i] = fData.HitLinkUpData( row )[(unsigned int)oldHitIndex[i]];
   }
 #endif
 
   const int_m fittingDone = r.fCurrentHitIndex < 0 && active;
   debugF() << "fittingDone = " << fittingDone << endl;
 //  if ( ISUNLIKELY( !fittingDone.isEmpty() ) ) {
-  ++r.fStage( fittingDone ); // goes to ExtrapolateUp if fitting is done (no other hit linked)
-  r.fLastRow( fittingDone ) = rowIndex;
+//  ++r.fStage( fittingDone ); // goes to ExtrapolateUp if fitting is done (no other hit linked)
+//  r.fLastRow( fittingDone ) = rowIndex;
+  r.fStage   = KFP::SIMD::select( fittingDone, r.fStage + 1, r.fStage );
+  r.fLastRow = KFP::SIMD::select( fittingDone, rowIndex, r.fLastRow );
   debugF() << "hits: " << r.fNHits << ", sinphi: " << r.fParam.SinPhi() << endl;
   
 
   const int_m invalidTracklet = r.IsInvalid() && fittingDone;
   
-  r.fNHits.setZero( invalidTracklet );
-  r.fStage( invalidTracklet || (fittingDone && !r.fIsFragile) ) = DoneStage;
+//  r.fNHits.setZero( invalidTracklet );
+//  r.fStage( invalidTracklet || (fittingDone && !r.fIsFragile) ) = DoneStage;
+  r.fNHits = KFP::SIMD::select( invalidTracklet, uint_v( 0 ), r.fNHits );
+  r.fStage = KFP::SIMD::select( invalidTracklet || (fittingDone && !r.fIsFragile), DoneStage, r.fStage );
   
   debugF() << "r.fStage: " << r.fStage << endl;
 //  }
@@ -246,7 +260,7 @@ void AliHLTTPCCATrackletConstructor::FindNextHit( TrackMemory &r, const AliHLTTP
 
   int_v fHitIndexes(-1);
 
-  for( unsigned int trackletIndex = 0; trackletIndex < int_v::Size; trackletIndex++ ) {
+  for( unsigned int trackletIndex = 0; trackletIndex < int_v::SimdLen; trackletIndex++ ) {
     if(!active[trackletIndex]) continue;
     float minRadius2 = std::numeric_limits<float>::max();
 
@@ -256,52 +270,91 @@ void AliHLTTPCCATrackletConstructor::FindNextHit( TrackMemory &r, const AliHLTTP
 
     { // look at iY = 0,1; iZ = 0
       const int end = fData.FirstHitInBin( row, indYmin + 2 );
-      for ( int hitIndex = fData.FirstHitInBin( row, indYmin ); hitIndex < end; hitIndex += float_v::Size ) {
+      for ( int hitIndex = fData.FirstHitInBin( row, indYmin ); hitIndex < end; hitIndex += float_v::SimdLen ) {
         float_v yz;
 	yz = fData.HitPDataY( row, hitIndex );
         const float_v dy = yz - y;
 	yz = fData.HitPDataZ( row, hitIndex );
         const float_v dz = yz - z;
-        float_v radius2 = std::numeric_limits<float_v>::max();
-        radius2( float_m(uint_v( Vc::IndexesFromZero ) + uint_v(hitIndex) < uint_v(end)) ) = dy * dy + dz * dz; // XXX Manhattan distance
-        const float min = radius2.min();
+        float_v radius2 = float_v( std::numeric_limits<float>::max() );
+//        radius2( float_m(uint_v( Vc::IndexesFromZero ) + uint_v(hitIndex) < uint_v(end)) ) = dy * dy + dz * dz; // XXX Manhattan distance
+        radius2 = KFP::SIMD::select( uint_v::iota( 0 ) + uint_v(hitIndex) < uint_v(end), dy * dy + dz * dz, radius2 );
+//        const float min = radius2.min();
+        //
+        float min = radius2[0];
+        for( size_t i = 1; i < float_v::SimdLen; i++ ) {
+          if( radius2[i] < min ) {
+            min = radius2[i];
+          }
+        }
+        //
         if ( min < minRadius2 ) {
           minRadius2 = min;
-          int i = ( radius2 == min ).firstOne();
+//          int i = ( radius2 == min ).firstOne();
+          int i = 0;
+          for( size_t j = 1; j < float_v::SimdLen; j++) {
+            if (radius2[j] == min) {
+              i = j;
+              break;
+            }
+          }
           assert( minRadius2 == radius2[i] );
-          dy_best[trackletIndex] = dy[i];
-          dz_best[trackletIndex] = dz[i];
-          fHitIndexes[trackletIndex] = hitIndex + i;
+//          dy_best[trackletIndex] = dy[i];
+//          dz_best[trackletIndex] = dz[i];
+//          fHitIndexes[trackletIndex] = hitIndex + i;
+          dy_best.insert(trackletIndex, dy[i]);
+          dz_best.insert(trackletIndex, dz[i]);
+          fHitIndexes.insert(trackletIndex, hitIndex + i);
         }
       }
     }
     { // look at iY = 0,1; iZ = 1
       const int nY = row.Grid().Ny();
       const int end = fData.FirstHitInBin( row, indYmin + nY + 2 );
-      for ( int hitIndex = fData.FirstHitInBin( row, indYmin + nY ); hitIndex < end; hitIndex += float_v::Size ) {
+      for ( int hitIndex = fData.FirstHitInBin( row, indYmin + nY ); hitIndex < end; hitIndex += float_v::SimdLen ) {
         float_v yz;
         yz = fData.HitPDataY( row, hitIndex );
         const float_v dy = yz - y;
 	yz = fData.HitPDataZ( row, hitIndex );
         const float_v dz = yz - z;
-        float_v radius2 = std::numeric_limits<float_v>::max();
-        radius2( float_m(uint_v( Vc::IndexesFromZero ) + uint_v(hitIndex) < uint_v(end)) ) = dy * dy + dz * dz; // XXX Manhattan distance
-        const float min = radius2.min();
+        float_v radius2 = float_v( std::numeric_limits<float>::max() );
+//        radius2( float_m(uint_v( Vc::IndexesFromZero ) + uint_v(hitIndex) < uint_v(end)) ) = dy * dy + dz * dz; // XXX Manhattan distance
+        radius2 = KFP::SIMD::select( uint_v::iota( 0 ) + uint_v(hitIndex) < uint_v(end), dy * dy + dz * dz, radius2 );
+//        const float min = radius2.min();
+        //
+        float min = radius2[0];
+        for( size_t i = 1; i < float_v::SimdLen; i++ ) {
+          if( radius2[i] < min ) {
+            min = radius2[i];
+          }
+        }
+        //
         if ( min < minRadius2 ) {
           minRadius2 = min;
-          int i = ( radius2 == min ).firstOne();
+//          int i = ( radius2 == min ).firstOne();
+          int i = 0;
+          for( size_t j = 1; j < float_v::SimdLen; j++) {
+            if (radius2[j] == min) {
+              i = j;
+              break;
+            }
+          }
           assert( minRadius2 == radius2[i] );
-          dy_best[trackletIndex] = dy[i];
-          dz_best[trackletIndex] = dz[i];
-          fHitIndexes[trackletIndex] = hitIndex + i;
+//          dy_best[trackletIndex] = dy[i];
+//          dz_best[trackletIndex] = dz[i];
+//          fHitIndexes[trackletIndex] = hitIndex + i;
+          dy_best.insert(trackletIndex, dy[i]);
+          dz_best.insert(trackletIndex, dz[i]);
+          fHitIndexes.insert(trackletIndex, hitIndex + i);
         }
       }
     }
   }
 
-  r.fCurrentHitIndex( active ) = fHitIndexes;
+//  r.fCurrentHitIndex( active ) = fHitIndexes;
+  r.fCurrentHitIndex = KFP::SIMD::select( active, fHitIndexes, r.fCurrentHitIndex );
 //  r.fCurrentHitIndex( static_cast<int_m>( row.NHits() <= 0 ) ) = -1; // sometimes row.NHits() == 0 but firstHitInBin != 0 CHECKME. But same checked in Extend\ExtrapolateTracklet
-  active &= (r.fCurrentHitIndex != int_v(-1));
+  active &= (r.fCurrentHitIndex != int_v( -1 ));
 } // FindNextHit
 
 /**
@@ -316,7 +369,8 @@ int_m AliHLTTPCCATrackletConstructor::ExtrapolateTracklet( TrackMemory &r, const
   const AliHLTTPCCARow &row = fData.Row( rowIndex );
 
   int_m active = mask;
-  --r.fRemainingGap( active );
+//  --r.fRemainingGap( active );
+  r.fRemainingGap = KFP::SIMD::select( active, r.fRemainingGap - 1, r.fRemainingGap );
   assert( (r.fRemainingGap >= 0 || !active).isFull() );
   debugF() << "ExtrapolateTracklet(" << rowIndex << ") fRemainingGap: " << r.fRemainingGap << endl;
 
@@ -330,21 +384,22 @@ int_m AliHLTTPCCATrackletConstructor::ExtrapolateTracklet( TrackMemory &r, const
   active = static_cast<int_m>( activeF );
 
   if ( row.NHits() < 1 || active.isEmpty() ) {
-    ++r.fStage( r.fRemainingGap == 0 && mask ); // go to WaitingForExtrapolateDown or DoneStage if the gap got too big
+//    ++r.fStage( r.fRemainingGap == 0 && mask ); // go to WaitingForExtrapolateDown or DoneStage if the gap got too big
+    r.fStage = KFP::SIMD::select( r.fRemainingGap == 0 && mask, r.fStage + 1, r.fStage );
 #ifndef NODEBUG
     debugF() << "r.fStage: " << r.fStage << " after ExtrapolateTracklet found empty row and fRemainingGap == " << r.fRemainingGap << endl;
 #endif
     // no hits in this row, skip (don't do this before TransportToX)
     ASSERT( (r.fRemainingGap >= 0).isFull(),
       r.fRemainingGap );
-    return int_m( Vc::Zero );
+    return int_m( false );
   }
 
     // find next hit
-  int_m linkMask = active; linkMask &= int_m(Vc::Zero);
+  int_m linkMask = active; linkMask &= int_m( false );
   
     // try to find hit by trying all closed hits
-  float_v dy_tmp(Vc::Zero), dz_tmp(Vc::Zero);
+  float_v dy_tmp( 0.f ), dz_tmp( 0.f );
   int_m findMask  = active && !linkMask;
   
   FindNextHit(r, row, dy_tmp, dz_tmp, findMask);
@@ -354,7 +409,7 @@ int_m AliHLTTPCCATrackletConstructor::ExtrapolateTracklet( TrackMemory &r, const
   active = linkMask || findMask;
 
     // check if found hit is acceptable
-  float_v err2Y(Vc::Zero), err2Z(Vc::Zero);
+  float_v err2Y( 0.f ), err2Z( 0.f );
   fTracker.GetErrors2( rowIndex, r.fParam, &err2Y, &err2Z );
 
   const float_v kFactor = AliHLTTPCCAParameters::HitPickUpFactor * AliHLTTPCCAParameters::HitPickUpFactor * 3.5f * 3.5f;
@@ -388,13 +443,18 @@ int_m AliHLTTPCCATrackletConstructor::ExtrapolateTracklet( TrackMemory &r, const
   fData.SetHitAsUsedInTrackExtend( row, static_cast<uint_v>(r.fCurrentHitIndex), active );
   
   trackletVector.SetRowHits( rowIndex, trackIndex,  static_cast<uint_v>(r.fCurrentHitIndex), active );
-  ++r.fNHits( static_cast<uint_m>(active) );
-  r.fRemainingGap( active ) = AliHLTTPCCAParameters::MaximumExtrapolationRowGap;
-  ++r.fStage( r.fRemainingGap == 0 && mask ); // go to WaitingForExtrapolateDown or DoneStage if the gap got too big
+//  ++r.fNHits( static_cast<uint_m>(active) );
+  r.fNHits = KFP::SIMD::select( active, r.fNHits + 1, r.fNHits );
+//  r.fRemainingGap( active ) = AliHLTTPCCAParameters::MaximumExtrapolationRowGap;
+  r.fRemainingGap = KFP::SIMD::select( active, AliHLTTPCCAParameters::MaximumExtrapolationRowGap, r.fRemainingGap );
+//  ++r.fStage( r.fRemainingGap == 0 && mask ); // go to WaitingForExtrapolateDown or DoneStage if the gap got too big
+  r.fStage = KFP::SIMD::select( r.fRemainingGap == 0 && mask, r.fStage + 1, r.fStage );
 //  r.fStage( r.fNHits > 10 && mask ) = DoneStage; // don't need long tracklets. merger will do work.
  
-  r.fLastRow(  active && int_m( dir) ) = rowIndex;
-  r.fFirstRow( active && int_m(!dir) ) = rowIndex;
+//  r.fLastRow(  active && int_m( dir) ) = rowIndex;
+//  r.fFirstRow( active && int_m(!dir) ) = rowIndex;
+  r.fLastRow  = KFP::SIMD::select( active && int_m( dir), rowIndex, r.fLastRow );
+  r.fFirstRow = KFP::SIMD::select( active && int_m(!dir), rowIndex, r.fFirstRow );
   return active;
 } // ExtrapolateTracklet
 
@@ -404,7 +464,6 @@ int_m AliHLTTPCCATrackletConstructor::ExtendTracklet( TrackMemory &r, const int 
   //assert( activeExtraMask == ( activeExtraMask && ( r.fStage == ExtrapolateUp || r.fStage == ExtrapolateDown ) ) );
   // reconstruction of tracklets, tracklets update step
   assert( AliHLTTPCCAParameters::RowStep == 1 );
-
   
   int_m activeExtraMask = mask;
   const int_m activeFitMask = (r.fStage == FitLinkedHits); // active chains (ones, which contains no fitted hits).
@@ -418,22 +477,23 @@ int_m AliHLTTPCCATrackletConstructor::ExtendTracklet( TrackMemory &r, const int 
   ASSERT( activeFitMask == ( activeFitMask && r.fCurrentHitIndex < row.NHits() ),
     activeFitMask << r.fCurrentHitIndex << row.NHits() );
   assert( (activeFitMask && activeExtraMask).isEmpty() );
-//  std::cout<<" - r.fCurrentHitIndex: "<<r.fCurrentHitIndex<<"\n";
   
   const uint_v oldHitIndex = static_cast<uint_v>( r.fCurrentHitIndex );
 
 
     
-  --r.fRemainingGap( activeExtraMask );
+//  --r.fRemainingGap( activeExtraMask );
+  r.fRemainingGap = KFP::SIMD::select( activeExtraMask, r.fRemainingGap - 1, r.fRemainingGap );
   debugF() << "ExtrapolateTracklet(" << rowIndex << ") fRemainingGap: " << r.fRemainingGap << endl;
   
   // -- TRANSPORT --
   const float_v x = fData.RowX( rowIndex );
 //  const int_v isUsed(fData.HitDataIsUsed( row ), static_cast<uint_v>(oldHitIndex), activeFitMask); // Here it takes a lot of time...
   int_v isUsed;
-  for( unsigned int i = 0; i < float_v::Size; i++ ) {
+  for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
     if( !activeFitMask[i] ) continue;
-    isUsed[i] = fData.HitDataIsUsed( row )[(unsigned int)oldHitIndex[i]];
+    isUsed.insert( i, fData.HitDataIsUsed( row )[(unsigned int)oldHitIndex[i]]);
+//    [i] = fData.HitDataIsUsed( row )[(unsigned int)oldHitIndex[i]];
   }
   const int_m fitMask = activeFitMask && (isUsed != int_v(2)) && (isUsed != int_v(3)) && (r.fCurrentHitIndex >= 0); // mask to add a new hit. // don't take hits from other tracks. In order to reduce calculations.
 
@@ -448,17 +508,21 @@ int_m AliHLTTPCCATrackletConstructor::ExtendTracklet( TrackMemory &r, const int 
 
   float_v dy = y - r.fLastY;
   float_v dz = z - r.fLastZ;
-  r.fLastY( activeFitMaskF ) = y;
-  r.fLastZ( activeFitMaskF ) = z;
+//  r.fLastY( activeFitMaskF ) = y;
+//  r.fLastZ( activeFitMaskF ) = z;
+  r.fLastY = KFP::SIMD::select( activeFitMaskF, y, r.fLastY );
+  r.fLastZ = KFP::SIMD::select( activeFitMaskF, z, r.fLastZ );
   
   float_v sinPhi = r.fParam.GetSinPhi();
 
   const float_m fragile = activeFitMaskF &&
       ( static_cast<float_m>( r.fNHits < uint_v(AliHLTTPCCAParameters::MinimumHitsForFragileTracklet) ) || CAMath::Abs( r.fParam.SinPhi() ) >= .99f );
-  sinPhi( fragile ) = dy * CAMath::RSqrt( dx * dx + dy * dy );
+//  sinPhi( fragile ) = dy * CAMath::RSqrt( dx * dx + dy * dy );
+  sinPhi = KFP::SIMD::select( fragile, dy * CAMath::RSqrt( dx * dx + dy * dy ), sinPhi );
   
-  float_v maxSinPhi = .99f;
-  maxSinPhi( activeFitMaskF ) = -1.f;
+  float_v maxSinPhi( .99f );
+//  maxSinPhi( activeFitMaskF ) = -1.f;
+  maxSinPhi = KFP::SIMD::select( activeFitMaskF, -1.f, maxSinPhi );
   
   assert( ( (x == 0) && (activeExtraMaskF || activeFitMaskF) ).isEmpty() );
 
@@ -469,7 +533,8 @@ int_m AliHLTTPCCATrackletConstructor::ExtendTracklet( TrackMemory &r, const int 
   if ( row.NHits() < 1 || ( activeExtraMaskF || activeFitMaskF ).isEmpty() ) { 
       // no hits in this row, skip (don't do this before TransportToX)
       // end with extrapolation
-    ++r.fStage( r.fRemainingGap == 0 && mask ); // go to WaitingForExtrapolateDown or DoneStage if the gap got too big
+//    ++r.fStage( r.fRemainingGap == 0 && mask ); // go to WaitingForExtrapolateDown or DoneStage if the gap got too big
+      r.fStage = KFP::SIMD::select( r.fRemainingGap == 0 && mask, r.fStage + 1, r.fStage );
 #ifndef NODEBUG
     debugF() << "r.fStage: " << r.fStage << " after ExtrapolateTracklet found empty row and fRemainingGap == " << r.fRemainingGap << endl;
 #endif
@@ -478,34 +543,39 @@ int_m AliHLTTPCCATrackletConstructor::ExtendTracklet( TrackMemory &r, const int 
 #ifdef VC_GATHER_SCATTER
     r.fCurrentHitIndex.gather( fData.HitLinkUpData( row ), static_cast<uint_v>( oldHitIndex ), activeFitMask ); // prepare new hit for fit // TODO 2 dir??
 #else
-    for( unsigned int i = 0; i < float_v::Size; i++ ) {
+    for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
       if( !activeFitMask[i] ) continue;
-      r.fCurrentHitIndex[i] = fData.HitLinkUpData( row )[(unsigned int)oldHitIndex[i]];
+      r.fCurrentHitIndex.insert( i, fData.HitLinkUpData( row )[(unsigned int)oldHitIndex[i]]);
+//      [i] = fData.HitLinkUpData( row )[(unsigned int)oldHitIndex[i]];
     }
 #endif
     
     const int_m fittingDone = r.fCurrentHitIndex < 0 && activeFitMask;
-    ++r.fStage( fittingDone ); // goes to ExtrapolateUp if fitting is done (no other hit linked)
-    r.fLastRow( fittingDone ) = rowIndex;
+//    ++r.fStage( fittingDone ); // goes to ExtrapolateUp if fitting is done (no other hit linked)
+//    r.fLastRow( fittingDone ) = rowIndex;
+    r.fStage = KFP::SIMD::select( fittingDone, r.fStage + 1, r.fStage );
+    r.fLastRow = KFP::SIMD::select( fittingDone, rowIndex, r.fLastRow );
 
     const int_m invalidTracklet = r.IsInvalid() && fittingDone;
-    r.fNHits.setZero( invalidTracklet );
-    r.fStage( invalidTracklet || (fittingDone && !r.fIsFragile) ) = DoneStage;
+//    r.fNHits.setZero( invalidTracklet );
+//    r.fStage( invalidTracklet || (fittingDone && !r.fIsFragile) ) = DoneStage;
+    r.fNHits = KFP::SIMD::select( invalidTracklet, uint_v( 0 ), r.fNHits );
+    r.fStage = KFP::SIMD::select( invalidTracklet || (fittingDone && !r.fIsFragile), DoneStage, r.fStage );
     
-    return int_m( Vc::Zero );
+    return int_m( false );
   }
 
   // -- FIND A NEXT HIT --
   activeExtraMask = static_cast<int_m>( activeExtraMaskF );
 
     // try find hit by using links
-  int_m linkMask = int_m(Vc::Zero);//activeExtraMask && r.fIsOnChain; - // use links during extrapolation is turned off
+  int_m linkMask = int_m( false );//activeExtraMask && r.fIsOnChain; - // use links during extrapolation is turned off
   
   dy = y - r.fParam.Y();
   dz = z - r.fParam.Z();
 
     // try to find hit by trying all closed hits
-  float_v  dy_tmp(Vc::Zero), dz_tmp(Vc::Zero);
+  float_v  dy_tmp( 0.f ), dz_tmp( 0.f );
   int_m findMask  = activeExtraMask && !linkMask; // try to find only if there is no chain
   if ( !findMask.isEmpty() ) {
     FindNextHit(r, row, dy_tmp, dz_tmp, findMask);
@@ -513,8 +583,10 @@ int_m AliHLTTPCCATrackletConstructor::ExtendTracklet( TrackMemory &r, const int 
   activeExtraMask = linkMask || findMask;
   activeExtraMaskF = static_cast<float_m>( activeExtraMask );
   
-  dy( static_cast<float_m>( findMask ) ) = dy_tmp;
-  dz( static_cast<float_m>( findMask ) ) = dz_tmp;
+//  dy( static_cast<float_m>( findMask ) ) = dy_tmp;
+//  dz( static_cast<float_m>( findMask ) ) = dz_tmp;
+  dy = KFP::SIMD::select( findMask, dy_tmp, dy );
+  dz = KFP::SIMD::select( findMask, dz_tmp, dz );
 
     // check if found hit is acceptable
   float_v err2Y, err2Z;
@@ -531,7 +603,6 @@ int_m AliHLTTPCCATrackletConstructor::ExtendTracklet( TrackMemory &r, const int 
   const float_v sy2 = CAMath::Min( two, kFactor * ( r.fParam.GetErr2Y() + err2Y ) );
   const float_v sz2 = CAMath::Min( two, kFactor * ( r.fParam.GetErr2Z() + err2Z ) );
 #endif
-
 
   activeExtraMaskF &= dy * dy <= sy2 && dz * dz <= sz2;
 
@@ -550,9 +621,10 @@ int_m AliHLTTPCCATrackletConstructor::ExtendTracklet( TrackMemory &r, const int 
 #ifdef VC_GATHER_SCATTER
   r.fCurrentHitIndex.gather( fData.HitLinkUpData( row ), static_cast<uint_v>( oldHitIndex ), uint_m(activeFitMask) ); // prepare new hit for fit
 #else
-  for( unsigned int i = 0; i < float_v::Size; i++ ) {
+  for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
     if( !activeFitMask[i] ) continue;
-    r.fCurrentHitIndex[i] = fData.HitLinkUpData( row )[(unsigned int)oldHitIndex[i]];
+    r.fCurrentHitIndex.insert( i, fData.HitLinkUpData( row )[(unsigned int)oldHitIndex[i]]);
+//    [i] = fData.HitLinkUpData( row )[(unsigned int)oldHitIndex[i]];
   }
 #endif
   
@@ -562,27 +634,37 @@ int_m AliHLTTPCCATrackletConstructor::ExtendTracklet( TrackMemory &r, const int 
   fData.SetHitAsUsedInTrackExtend( row, static_cast<uint_v>( r.fCurrentHitIndex ), activeExtraMask ); // TODO 1 function
   fData.SetHitAsUsedInTrackFit(    row, static_cast<uint_v>( oldHitIndex ),        hitAdded );
   
-  ++r.fNHits( static_cast<uint_m>( activeExtraMask || hitAdded ) );
-  r.fRemainingGap( activeExtraMask ) = AliHLTTPCCAParameters::MaximumExtrapolationRowGap;
+//  ++r.fNHits( static_cast<uint_m>( activeExtraMask || hitAdded ) );
+//  r.fRemainingGap( activeExtraMask ) = AliHLTTPCCAParameters::MaximumExtrapolationRowGap;
+  r.fNHits = KFP::SIMD::select( activeExtraMask || hitAdded, r.fNHits + 1, r.fNHits );
+  r.fRemainingGap = KFP::SIMD::select( activeExtraMask, AliHLTTPCCAParameters::MaximumExtrapolationRowGap, r.fRemainingGap );
 
     // -- MOVE TO NEXT STAGE --
-  ++r.fStage( (r.fRemainingGap == 0) && mask ); // go to WaitingForExtrapolateDown or DoneStage if the gap got too big TODO not active
+//  ++r.fStage( (r.fRemainingGap == 0) && mask ); // go to WaitingForExtrapolateDown or DoneStage if the gap got too big TODO not active
+  r.fStage = KFP::SIMD::select( r.fRemainingGap == 0 && mask, r.fStage + 1, r.fStage );
   ASSERT( (r.fRemainingGap >= 0).isFull(),
     r.fRemainingGap << mask << activeExtraMask );
 //  r.fStage( r.fNHits > 10 && mask ) = DoneStage; // don't need long tracklets. merdger will do work.
   
   const int_m fittingDone = r.fCurrentHitIndex < 0 && activeFitMask;
-  ++r.fStage( fittingDone ); // goes to ExtrapolateUp if fitting is done (no other hit linked)
-  r.fLastRow( fittingDone ) = rowIndex;
+//  ++r.fStage( fittingDone ); // goes to ExtrapolateUp if fitting is done (no other hit linked)
+//  r.fLastRow( fittingDone ) = rowIndex;
+  r.fStage = KFP::SIMD::select( fittingDone, r.fStage + 1, r.fStage );
+  r.fLastRow = KFP::SIMD::select( fittingDone, rowIndex, r.fLastRow );
 
   const int_m invalidTracklet = r.IsInvalid() && fittingDone;
-  r.fNHits.setZero( invalidTracklet );
-  r.fStage( invalidTracklet || (fittingDone && !r.fIsFragile) ) = DoneStage; // TODO unmark used hits
+//  r.fNHits.setZero( invalidTracklet );
+//  r.fStage( invalidTracklet || (fittingDone && !r.fIsFragile) ) = DoneStage; // TODO unmark used hits
+  r.fNHits = KFP::SIMD::select( invalidTracklet, uint_v( 0 ), r.fNHits );
+  r.fStage = KFP::SIMD::select( invalidTracklet || (fittingDone && !r.fIsFragile), DoneStage, r.fStage );
   
-  r.fEndRow( hitAdded ) = rowIndex;
+//  r.fEndRow( hitAdded ) = rowIndex;
+  r.fEndRow = KFP::SIMD::select( hitAdded, rowIndex, r.fEndRow );
 
-  r.fLastRow(  activeExtraMask && int_m( dir) ) = rowIndex;
-  r.fFirstRow( activeExtraMask && int_m(!dir) ) = rowIndex;
+//  r.fLastRow(  activeExtraMask && int_m( dir) ) = rowIndex;
+//  r.fFirstRow( activeExtraMask && int_m(!dir) ) = rowIndex;
+  r.fLastRow  = KFP::SIMD::select( activeExtraMask && int_m( dir), rowIndex, r.fLastRow );
+  r.fFirstRow = KFP::SIMD::select( activeExtraMask && int_m(!dir), rowIndex, r.fFirstRow );
   return activeExtraMask;
 } // ExtendTracklet
 
@@ -622,7 +704,8 @@ void AliHLTTPCCATrackletConstructor::CreateStartSegmentV( const int rowIndex, co
   const float DnTx = xDn / x;
 
   const int hitsStartOffset = *fTracker.NTracklets();
-  Vc::vector<AliHLTTPCCAStartHitId>& startHits = fTracker.TrackletStartHits();
+//  Vc::vector<AliHLTTPCCAStartHitId>& startHits = fTracker.TrackletStartHits();
+  std::vector<AliHLTTPCCAStartHitId>& startHits = fTracker.TrackletStartHits();
   unsigned int startHitsCount = 0;
 
   std::vector<int> hitsDn, hitsMid, hitsUp;
@@ -633,13 +716,13 @@ void AliHLTTPCCATrackletConstructor::CreateStartSegmentV( const int rowIndex, co
   const float chi2Cut = AliHLTTPCCAParameters::NeighbourChiCut[iter]*AliHLTTPCCAParameters::NeighbourChiCut[iter] * 4.f * ( UpDx * UpDx + DnDx * DnDx );
 
   typedef HitArea::NeighbourData NeighbourData;
-  for ( unsigned int hitIndex = 0; hitIndex < numberOfHits; hitIndex += int_v::Size ) {
+  for ( unsigned int hitIndex = 0; hitIndex < numberOfHits; hitIndex += int_v::SimdLen ) {
 
-    uint_v hitIndexes( uint_v(Vc::IndexesFromZero) + hitIndex );
+    uint_v hitIndexes( uint_v::iota( 0 )/*(Vc::IndexesFromZero)*/ + hitIndex );
     const int_m &validHitsMask = hitIndexes < numberOfHits;
 
     // coordinates of the hit in the current row
-    float_v y(Vc::Zero), z(Vc::Zero), yUp(Vc::Zero), zUp(Vc::Zero), yDn(Vc::Zero), zDn(Vc::Zero);
+    float_v y( 0.f ), z( 0.f ), yUp( 0.f ), zUp( 0.f ), yDn( 0.f ), zDn( 0.f );
 
     y = fData.UnusedHitPDataY( row, hitIndexes, static_cast<float_m>(validHitsMask) );
     z = fData.UnusedHitPDataZ( row, hitIndexes, static_cast<float_m>(validHitsMask) );
@@ -652,7 +735,7 @@ void AliHLTTPCCATrackletConstructor::CreateStartSegmentV( const int rowIndex, co
       // find all neighbours in upper area (kMaxN at max)
     HitArea areaUp( rowUp, fData, yUp, zUp, UpDx*kAreaSizeY, UpDx*kAreaSizeZ, validHitsMask );
 
-    uint_v maxUpperNeighbourIndex = uint_v(Vc::Zero);
+    uint_v maxUpperNeighbourIndex = uint_v( 0 );
     int upperNeighbourIndex = 0;
     NeighbourData neighUp[kMaxN];
     while ( !( areaUp.GetNext( &neighUp[upperNeighbourIndex] ) ).isEmpty() ) {
@@ -664,7 +747,8 @@ void AliHLTTPCCATrackletConstructor::CreateStartSegmentV( const int rowIndex, co
       neighUp[upperNeighbourIndex].fY = DnDx * ( neighUp[upperNeighbourIndex].fY - y );
       neighUp[upperNeighbourIndex].fZ = DnDx * ( neighUp[upperNeighbourIndex].fZ - z );
 
-      maxUpperNeighbourIndex(neighUp[upperNeighbourIndex].fValid)++;
+//      maxUpperNeighbourIndex(neighUp[upperNeighbourIndex].fValid)++;
+      maxUpperNeighbourIndex = KFP::SIMD::select( neighUp[upperNeighbourIndex].fValid, maxUpperNeighbourIndex + 1, maxUpperNeighbourIndex );
       ++upperNeighbourIndex;
 
       if ( ISUNLIKELY(upperNeighbourIndex >= kMaxN) ){
@@ -689,7 +773,7 @@ void AliHLTTPCCATrackletConstructor::CreateStartSegmentV( const int rowIndex, co
     HitArea areaDn( rowDn, fData, yDn, zDn, -DnDx*kAreaSizeY, -DnDx*kAreaSizeZ, validHitsMask );
 //    HitArea areaDn( rowDn, fData, yDn, zDn, -DnDx*kAreaSizeY, -DnDx*kAreaSizeZ/2, validHitsMask );	// -0.5% eff; +0.7ms time
     while ( !( nextMask = areaDn.GetNext( &neighDn ) ).isEmpty() ) {
-      if ( ISUNLIKELY( ((uint_v(Vc::Zero) < maxUpperNeighbourIndex) && neighDn.fValid).isEmpty() ) ) continue; // no both neighbours
+      if ( ISUNLIKELY( ((uint_v( 0 ) < maxUpperNeighbourIndex) && neighDn.fValid).isEmpty() ) ) continue; // no both neighbours
 
       assert( (neighDn.fLinks < rowDn.NUnusedHits() || !neighDn.fValid).isFull() );
       nNeighDn++;
@@ -697,36 +781,40 @@ void AliHLTTPCCATrackletConstructor::CreateStartSegmentV( const int rowIndex, co
       neighDn.fY = UpDx * ( neighDn.fY - y );
       neighDn.fZ = UpDx * ( neighDn.fZ - z );
 
-      int_m dnMask( Vc::Zero ); // mask for appropriate neibours-pairs
+      int_m dnMask( false ); // mask for appropriate neibours-pairs
 
         // iterate over the upper hits we found before and find the one with lowest curvature
       uint_v curMaxUpperNeighbourIndex = maxUpperNeighbourIndex;
-      curMaxUpperNeighbourIndex(!neighDn.fValid) = 0;
+//      curMaxUpperNeighbourIndex(!neighDn.fValid) = 0;
+      curMaxUpperNeighbourIndex = KFP::SIMD::select( !neighDn.fValid, uint_v( 0 ), curMaxUpperNeighbourIndex );
       const int maxMaxUpperNeighbourIndex = curMaxUpperNeighbourIndex.max();
       for ( int i = 0; i < maxMaxUpperNeighbourIndex; ++i ) {
-        float_m masksf( neighDn.fValid & neighUp[i].fValid ); // only store links for actually useful data.
+        float_m masksf( neighDn.fValid && neighUp[i].fValid ); // only store links for actually useful data.
 
         const float_v dy = neighDn.fY - neighUp[i].fY;
         const float_v dz = neighDn.fZ - neighUp[i].fZ;
         const float_v d = dy * dy + dz * dz;
         masksf &= d < bestD;
-        bestD( masksf ) = d;
+//        bestD( masksf ) = d;
+        bestD = KFP::SIMD::select( masksf, d, bestD );
         const int_m masks( masksf );
         dnMask |= masks;
-        bestUp( masks ) = neighUp[i].fLinks;
+//        bestUp( masks ) = neighUp[i].fLinks;
+        bestUp = KFP::SIMD::select( masks, neighUp[i].fLinks, bestUp );
       }
-      bestDn( dnMask ) = neighDn.fLinks;
+//      bestDn( dnMask ) = neighDn.fLinks;
+      bestDn = KFP::SIMD::select( dnMask, neighDn.fLinks, bestDn );
     }
     assert( (bestD < chi2Cut || float_m( bestUp == -1 && bestDn == -1 )).isFull() );
 
       // store the link indexes we found
     assert( ((bestUp >= -1) && (bestUp < rowUp.NUnusedHits()) && validHitsMask) == validHitsMask );
     assert( ((bestDn >= -1) && (bestDn < rowDn.NUnusedHits()) && validHitsMask) == validHitsMask );
-    int_m setSegment(validHitsMask && bestDn >= int_v(Vc::Zero) && bestUp >= int_v(Vc::Zero));
+    int_m setSegment(validHitsMask && bestDn >= int_v( 0 ) && bestUp >= int_v( 0 ));
 #ifdef FOURHITSEGMENTS
     int currentHit = 0;
     float_v bestUU = chi2Cut;
-    for( unsigned int iV = 0; iV < float_v::Size; iV++ ) {
+    for( unsigned int iV = 0; iV < float_v::SimdLen; iV++ ) {
       if( !setSegment[iV] ) continue;
       hitsDn.push_back(bestDn[iV]);
       hitsMid.push_back(hitIndexes[iV]);
@@ -734,10 +822,10 @@ void AliHLTTPCCATrackletConstructor::CreateStartSegmentV( const int rowIndex, co
     }
 
     if( hitsMid.size() == 0 ) continue;
-//    if( hitsMid.size() - currentHit >= float_v::Size ) {
+//    if( hitsMid.size() - currentHit >= float_v::SimdLen ) {
       uint_v nh1( hitsMid[currentHit] ), nh2( hitsUp[currentHit] ), nh3( Vc::Zero ), nh0( Vc::Zero );
 
-      for( unsigned int iV = 1; iV < float_v::Size; iV++ ) {
+      for( unsigned int iV = 1; iV < float_v::SimdLen; iV++ ) {
         nh1[iV] = hitsMid[currentHit+iV];
         nh2[iV] = hitsUp[currentHit+iV];
         nh0[iV] = hitsDn[currentHit+iV];
@@ -765,14 +853,14 @@ void AliHLTTPCCATrackletConstructor::CreateStartSegmentV( const int rowIndex, co
         dnMaskU |= maskU;
         bestUpUp( (int_m)dnMaskU ) = neighDn.fLinks;
       }
-      currentHit += float_v::Size;
+      currentHit += float_v::SimdLen;
 //    }
       setSegment &= int_m( bestUpUp >= 0 );
 #endif
 
     fData.SetUnusedHitLinkUpData( row, rowUp, hitIndexes, bestUp, setSegment );
     fData.SetUnusedHitLinkDownData( row, rowDn, hitIndexes, bestDn, setSegment );
-    for( unsigned int iV = 0; iV < float_v::Size; iV++ ) {
+    for( unsigned int iV = 0; iV < float_v::SimdLen; iV++ ) {
       if( !setSegment[iV] ) continue;
       unsigned int hit0 = rowDn.HitIndex()[(unsigned int)bestDn[iV]];
       fData.SetHitLinkUpData( rowDn, hit0, row.HitIndex()[(unsigned int)hitIndexes[iV]] );
@@ -836,26 +924,31 @@ void AliHLTTPCCATrackletConstructor::run( unsigned int firstRow, unsigned int &t
   int newTr = 0;
 #endif
 
-  unsigned int tracksSavedV = tracksSaved / float_v::Size;
-  for ( unsigned int trackIteration = tracksSavedV; trackIteration * uint_v::Size < nTracks; ++trackIteration ) {
-    const uint_v trackIndex( uint_v( Vc::IndexesFromZero ) + uint_v(trackIteration * uint_v::Size) );
+  unsigned int tracksSavedV = tracksSaved / float_v::SimdLen;
+  for ( unsigned int trackIteration = tracksSavedV; trackIteration * uint_v::SimdLen < nTracks; ++trackIteration ) {
+    const uint_v trackIndex( uint_v::iota( 0 )/*( Vc::IndexesFromZero )*/ + uint_v(trackIteration * uint_v::SimdLen) );
     const uint_m active = trackIndex < nTracks && trackIndex >= tracksSaved;
     if( active.isEmpty() ) continue;
     TrackMemory r;
-    r.fStage( !active ) = NullStage;
+//    r.fStage( !active ) = NullStage;
+    r.fStage = KFP::SIMD::select( !active, NullStage, r.fStage );
 
       // if rowStep = 2 TrackletStartHits need to be sorted such that all even start rows come first. The odd start rows - last.
-    uint_v length(Vc::Zero);
-    for( unsigned int i = 0; i < float_v::Size; i++ ) {
+    uint_v length( 0 );
+    for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
       if( !active[i] ) continue;
-      r.fStartRow[i] = fTracker.TrackletStartHit((unsigned int)trackIndex[i]).fRow;
-      r.fCurrentHitIndex[i] = fTracker.TrackletStartHit((unsigned int)trackIndex[i]).fHit;
-      length[i] = fTracker.TrackletStartHit((unsigned int)trackIndex[i]).fLength;
+      r.fStartRow.insert( i, fTracker.TrackletStartHit((unsigned int)trackIndex[i]).fRow );
+//      [i] = fTracker.TrackletStartHit((unsigned int)trackIndex[i]).fRow;
+      r.fCurrentHitIndex.insert( i, fTracker.TrackletStartHit((unsigned int)trackIndex[i]).fHit );
+//      [i] = fTracker.TrackletStartHit((unsigned int)trackIndex[i]).fHit;
+      length.insert( i, fTracker.TrackletStartHit((unsigned int)trackIndex[i]).fLength );
+//      [i] = fTracker.TrackletStartHit((unsigned int)trackIndex[i]).fLength;
     }
     r.fEndRow = static_cast<uint_v>( r.fStartRow );
     r.fLastRow = static_cast<uint_v>( r.fStartRow );
 //    r.fStartRow( !active ) = std::numeric_limits<int_v>::max();
-    r.fStartRow( !active ) = std::numeric_limits<int>::max();
+//    r.fStartRow( !active ) = std::numeric_limits<int>::max();
+    r.fStartRow = KFP::SIMD::select( !active, int_v( std::numeric_limits<int>::max() ), r.fStartRow );
     r.fFirstRow = r.fStartRow;
 
 #ifdef EXTEND_ALL_TRAKCS
@@ -864,8 +957,8 @@ r.fIsFragile = uint_m(true);
     const uint_v MaxNHitsForFragileTracklet(6);
     r.fIsFragile = (length < MaxNHitsForFragileTracklet);
 #endif
-    const float_v zero( Vc::Zero );
-    const float_v one( Vc::One );
+    const float_v zero( 0.f );
+    const float_v one( 1.f );
     r.fParam.SetSinPhi(  zero );
     r.fParam.SetDzDs(    zero );
     r.fParam.SetQPt(     zero );
@@ -890,7 +983,8 @@ r.fIsFragile = uint_m(true);
 
     {
       InitTracklets init( r, fData, fTracker, fTrackletVectors[trackIteration], trackIndex, active );
-      r.fStartRow.callWithValuesSorted( init );
+//      r.fStartRow.callWithValuesSorted( init );
+      callWithValuesSorted<int_v, int, InitTracklets>( r.fStartRow, init );	//TODO: TEST Def.f::callWithValuesSorted AND COMPARE WITH Vc::callWithValuesSorted
     }
     
 //#define USE_COUNTERS
@@ -948,9 +1042,10 @@ r.fIsFragile = uint_m(true);
         counters[1]++;
 #endif // USE_COUNTERS
         
-        r.fStage( rowIndex == activationRow ) = FitLinkedHits; // goes to FitLinkedHits on activation row
+//        r.fStage( rowIndex == activationRow ) = FitLinkedHits; // goes to FitLinkedHits on activation row
+        r.fStage = KFP::SIMD::select( rowIndex == activationRow, FitLinkedHits, r.fStage );
 
-        ExtendTracklet( r, rowIndex, trackIndex, fTrackletVectors[trackIteration], 1, int_m(Vc::Zero) );
+        ExtendTracklet( r, rowIndex, trackIndex, fTrackletVectors[trackIteration], 1, int_m( false ) );
         ++rowIndex;
       }
 
@@ -963,7 +1058,8 @@ r.fIsFragile = uint_m(true);
        counters[2]++;
 #endif // USE_COUNTERS
 
-        r.fStage( rowIndex == activationRow ) = FitLinkedHits; // goes to FitLinkedHits on activation row
+//        r.fStage( rowIndex == activationRow ) = FitLinkedHits; // goes to FitLinkedHits on activation row
+        r.fStage = KFP::SIMD::select( rowIndex == activationRow, FitLinkedHits, r.fStage );
         const int_m toExtrapolate = (r.fStage == ExtrapolateUp);
         ExtendTracklet( r, rowIndex, trackIndex, fTrackletVectors[trackIteration], 1, toExtrapolate );
         ++rowIndex;
@@ -988,23 +1084,27 @@ r.fIsFragile = uint_m(true);
       // r.fStage (r.fNHits < MaxNHitsForFragileTracklet) = DoneStage; // TODO investigate
     { // extrapolate downwards
       r.fRemainingGap = AliHLTTPCCAParameters::MaximumExtrapolationRowGap; // allow full gaps again
-      ++r.fStage( r.fStage == ExtrapolateUp ); // FitLinkedHits/ExtrapolateUp went so high that no gap put the tracklet into WaitingForExtrapolateDown
+//      ++r.fStage( r.fStage == ExtrapolateUp ); // FitLinkedHits/ExtrapolateUp went so high that no gap put the tracklet into WaitingForExtrapolateDown
+      r.fStage = KFP::SIMD::select( r.fStage == ExtrapolateUp, r.fStage + 1, r.fStage );
       const int_m ready = r.fStage == WaitingForExtrapolateDown;
       debugF() << "ready to extrapolate downwards: " << ready << endl;
-      ++r.fStage( ready ); // the wait is over
+//      ++r.fStage( ready ); // the wait is over
+      r.fStage = KFP::SIMD::select( ready, r.fStage + 1, r.fStage );
 
       if(1){ // set track parameters to x of end row of the fitting stage
         //const float_v x( fData.RowX(), float_v::IndexType( r.fEndRow ) );
-        const float_v x( fData.RowX(), float_v::IndexType( r.fStartRow ), static_cast<float_m>(ready));
-        debugF() << x << float_v::IndexType( r.fEndRow ) << float_v( fData.RowX(), float_v::IndexType( Vc::IndexesFromZero ) ) << endl;
+//        const float_v x( fData.RowX(), float_v::IndexType( r.fStartRow ), static_cast<float_m>(ready));
+	const float_v x = SetByIndex(fData.RowX(), r.fStartRow, ready);
+//        debugF() << x << float_v::IndexType( r.fEndRow ) << float_v( fData.RowX(), float_v::IndexType( Vc::IndexesFromZero ) ) << endl;
         assert( ( x == 0 && static_cast<float_m>( ready ) ).isEmpty() );
         const int_m transported = static_cast<int_m>( r.fParam.TransportToX(
                                                             x, fTracker.Param().cBz(), .999f, static_cast<float_m>( ready ) ) );
-        ++r.fStage( !transported ); // all those where transportation failed go to DoneStage
+//        ++r.fStage( !transported ); // all those where transportation failed go to DoneStage
+        r.fStage = KFP::SIMD::select( !transported, r.fStage + 1, r.fStage );
       }
 #ifdef MAIN_DRAW
       if ( AliHLTTPCCADisplay::Instance().DrawType() == 1 ) {
-        for(int ii=0; ii<int_v::Size; ii++)
+        for(int ii=0; ii<int_v::SimdLen; ii++)
         {
           if(!(r.fStage[ii] < DoneStage)) continue;
           TrackParam t( r.fParam, ii );
@@ -1018,8 +1118,10 @@ r.fIsFragile = uint_m(true);
 #endif
       debugF() << "========================================= Start Extrapolating Downwards =========================================" << endl;
       int_v tmpRow(r.fStartRow); // take only one hit from fitted chain
-      tmpRow(!active) = fTracker.Param().NRows()-1;
+//      tmpRow(!active) = fTracker.Param().NRows()-1;
+      tmpRow = KFP::SIMD::select( !active, fTracker.Param().NRows() - 1, tmpRow );
       int rowIndex = tmpRow.max();
+
         // extrapolate along fitted chains
       int_m mask; 
       const int minMaskedExtrRow = r.fStartRow.min();
@@ -1029,7 +1131,7 @@ r.fIsFragile = uint_m(true);
 #endif // USE_COUNTERS
        mask &= rowIndex < r.fStartRow + 1;
 //       mask &= ( ( rowIndex - r.fStartRow ) & int_v( std::numeric_limits<int_v::EntryType>::min() + 1 ) ) != int_v( Vc::Zero ); // CHECKME why do we need this?
-       mask &= ( ( rowIndex - r.fStartRow ) != int_v( Vc::Zero ) & int_v( std::numeric_limits<int_v::EntryType>::min() + 1 ) != int_v( Vc::Zero ) ); // CHECKME why do we need this?
+       mask &= ( ( rowIndex - r.fStartRow ) != int_v( 0 ) && int_v( std::numeric_limits<int/*int_v::EntryType*/>::min() + 1 ) != int_v( 0 ) ); // CHECKME why do we need this?
        ExtrapolateTracklet( r, rowIndex, trackIndex, fTrackletVectors[trackIteration], 0, mask );
        --rowIndex;
       }
@@ -1038,13 +1140,14 @@ r.fIsFragile = uint_m(true);
 #ifdef USE_COUNTERS
        counters[5]++;
 #endif // USE_COUNTERS
+
        ExtrapolateTracklet( r, rowIndex, trackIndex, fTrackletVectors[trackIteration], 0, mask );
         --rowIndex;
       }
       r.fFirstRow = CAMath::Min( r.fFirstRow, r.fStartRow );
 #ifdef MAIN_DRAW
       if ( AliHLTTPCCADisplay::Instance().DrawType() == 10 ) {
-        for(int ii=0; ii<int_v::Size; ii++)
+        for(int ii=0; ii<int_v::SimdLen; ii++)
         {
           if(!(r.fStage[ii] < NullStage)) continue;
 //         foreach_bit( int ii, r.fStage < NullStage ) {
@@ -1080,14 +1183,15 @@ r.fIsFragile = uint_m(true);
 
 
         // there must be errors and they must be positive or this track is garbage
-      && r.fParam.Err2QPt()    > float_v(Vc::Zero);
-    trackletOkF &= r.fParam.Err2Y()      > float_v(Vc::Zero) && r.fParam.Err2Z()      > float_v(Vc::Zero);
-    trackletOkF &= r.fParam.Err2SinPhi() > float_v(Vc::Zero) && r.fParam.Err2DzDs()   > float_v(Vc::Zero);
+      && r.fParam.Err2QPt()    > float_v( 0.f );
+    trackletOkF &= r.fParam.Err2Y()      > float_v( 0.f ) && r.fParam.Err2Z()      > float_v( 0.f );
+    trackletOkF &= r.fParam.Err2SinPhi() > float_v( 0.f ) && r.fParam.Err2DzDs()   > float_v( 0.f );
 //    trackletOkF &= ( r.fParam.Chi2()/static_cast<float_v>(r.fParam.NDF()) < 25.f ); // TODO
     debugF() << r.fParam << "-> trackletOk: " << trackletOkF << endl;
 
     const int_m trackletOk( trackletOkF );
-    r.fNHits.setZero( !trackletOk );
+//    r.fNHits.setZero( !trackletOk );
+    r.fNHits = KFP::SIMD::select( !trackletOk, uint_v( 0 ), r.fNHits );
 
       //////////////////////////////////////////////////////////////////////
       //
@@ -1098,7 +1202,7 @@ r.fIsFragile = uint_m(true);
     if ( !( r.fNHits > 0 ).isEmpty() ) {
 #ifdef MAIN_DRAW
       if ( AliHLTTPCCADisplay::Instance().DrawType() == 10 ) {
-        for(int ii=0; ii<int_v::Size; ii++)
+        for(int ii=0; ii<int_v::SimdLen; ii++)
         {
           if(!(r.fStage[ii] < DoneStage)) continue;
 //         foreach_bit( int ii, r.fStage < DoneStage ) {
@@ -1119,14 +1223,15 @@ r.fIsFragile = uint_m(true);
         ///mvz start 25.01.2010
       const float_m MinQPt = CAMath::Abs(r.fParam.QPt()) < AliHLTTPCCAParameters::MinimumQPt;
       float_v NewQPt = r.fParam.QPt();
-      NewQPt(MinQPt) = AliHLTTPCCAParameters::MinimumQPt;
+//      NewQPt(MinQPt) = AliHLTTPCCAParameters::MinimumQPt;
+      NewQPt = KFP::SIMD::select( MinQPt, AliHLTTPCCAParameters::MinimumQPt, NewQPt );
       r.fParam.SetQPt(NewQPt);
         //      r.fParam.SetQPt( CAMath::Max( AliHLTTPCCAParameters::MinimumQPt, r.fParam.QPt() ) );
         ///mvz end 25.01.2010
       tracklet.SetParam( r.fParam, (float_m)active );
 
 #ifndef NO_NTRACKLET_FIX
-      for( unsigned int iV = 0; iV < float_v::Size; iV++ ) {
+      for( unsigned int iV = 0; iV < float_v::SimdLen; iV++ ) {
 	if( active[iV] ) newTr++;
       }
 #endif
@@ -1135,7 +1240,7 @@ r.fIsFragile = uint_m(true);
       debugTS() << "set hit weigths from row " << r.fFirstRow.min() << " until row " << r.fLastRow.max() << endl;
 //      const uint_v &weight = SliceData::CalculateHitWeight( r.fNHits, trackIndex );
         // for all rows where we have a hit let the fTracker know what weight our hits have
-      for ( unsigned int rowIndex = r.fFirstRow.min(); rowIndex <= r.fLastRow.max(); ++rowIndex ) {
+      for ( unsigned int rowIndex = r.fFirstRow.min(); rowIndex <= (unsigned int)r.fLastRow.max(); ++rowIndex ) {
         const uint_v &hitIndex = tracklet.HitIndexAtRow( rowIndex );
         fData.MaximizeHitWeight( fData.Row( rowIndex ), hitIndex, r.fNHits );
 #ifdef V7
@@ -1180,24 +1285,25 @@ void InitTracklets::operator()( int rowIndex )
 
       // mark first hit as used
     int_v isUsed;
-    for( unsigned int i = 0; i < float_v::Size; i++ ) {
+    for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
       if( !mask[i] ) continue;
-      isUsed[i] = fData.HitDataIsUsed( row )[(unsigned int)r.fCurrentHitIndex[i]];
+      isUsed.insert(i, fData.HitDataIsUsed( row )[(unsigned int)r.fCurrentHitIndex[i]]);
+//      [i] = fData.HitDataIsUsed( row )[(unsigned int)r.fCurrentHitIndex[i]];
     }
-    fData.SetHitAsUsedInTrackFit( row, static_cast<uint_v>( r.fCurrentHitIndex ), mask && ( isUsed == int_v(1) ) );
+    fData.SetHitAsUsedInTrackFit( row, static_cast<uint_v>( r.fCurrentHitIndex ), mask && ( isUsed == int_v( 1 ) ) );
 #ifdef VC_GATHER_SCATTER
     r.fCurrentHitIndex.gather( fData.HitLinkUpData( row ), hitIndex, mask ); // set to next linked hit
 #else
-    for( unsigned int i = 0; i < float_v::Size; i++ ) {
+    for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
       if( !mask[i] ) continue;
-      r.fCurrentHitIndex[i] = fData.HitLinkUpData( row )[(unsigned int)hitIndex[i]];
+      r.fCurrentHitIndex.insert(i, fData.HitLinkUpData( row )[(unsigned int)hitIndex[i]]);
+//      [i] = fData.HitLinkUpData( row )[(unsigned int)hitIndex[i]];
     }
 #endif
     // the first hit in the Tracklet is guaranteed to have a link up, since StartHitsFinder
     // ensures it
     assert( ( r.fCurrentHitIndex >= 0 && mask ) == mask );
   }
-
   mask &= (r.fCurrentHitIndex >= 0);
   maskF &= static_cast<float_m>(r.fCurrentHitIndex >= 0);
   rowIndex += rowStep;
@@ -1210,7 +1316,7 @@ void InitTracklets::operator()( int rowIndex )
     const float_v &dx = x - r.fParam.X();
     const float_v &dy = y - r.fParam.Y();
     const float_v &dz = z - r.fParam.Z();
-    const float_v &ri = float_v( Vc::One ) * CAMath::RSqrt( dx * dx + dy * dy );
+    const float_v &ri = float_v( 1.f ) * CAMath::RSqrt( dx * dx + dy * dy );
     const float_v &sinPhi = dy * ri;
     r.fParam.SetSinPhi( sinPhi,  maskF );
     r.fParam.SetDzDs  ( dz * ri, maskF );
@@ -1227,22 +1333,26 @@ void InitTracklets::operator()( int rowIndex )
     UNUSED_PARAM2( transported, hitAdded );
     fTrackletVector.SetRowHits( rowIndex, trackIndex, hitIndex, mask );
 
-    r.fLastY( maskF ) = y;
-    r.fLastZ( maskF ) = z;
+//    r.fLastY( maskF ) = y;
+//    r.fLastZ( maskF ) = z;
+    r.fLastY = KFP::SIMD::select( maskF, y, r.fLastY );
+    r.fLastZ = KFP::SIMD::select( maskF, z, r.fLastZ );
     
       // mark 2-nd hit as used
     int_v isUsed;
-    for( unsigned int i = 0; i < float_v::Size; i++ ) {
+    for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
       if( !mask[i] ) continue;
-      isUsed[i] = fData.HitDataIsUsed( row )[(unsigned int)r.fCurrentHitIndex[i]];
+      isUsed.insert(i, fData.HitDataIsUsed( row )[(unsigned int)r.fCurrentHitIndex[i]]);
+//      [i] = fData.HitDataIsUsed( row )[(unsigned int)r.fCurrentHitIndex[i]];
     }
     fData.SetHitAsUsedInTrackFit( row, static_cast<uint_v>( r.fCurrentHitIndex ), static_cast<int_m>(mask) && ( isUsed == int_v(1) ) );
 #ifdef VC_GATHER_SCATTER
     r.fCurrentHitIndex.gather( fData.HitLinkUpData( row ), hitIndex, mask ); // set to next linked hit
 #else
-    for( unsigned int i = 0; i < float_v::Size; i++ ) {
+    for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
       if( !mask[i] ) continue;
-      r.fCurrentHitIndex[i] = fData.HitLinkUpData( row )[(unsigned int)hitIndex[i]];
+      r.fCurrentHitIndex.insert(i, fData.HitLinkUpData( row )[(unsigned int)hitIndex[i]]);
+//      [i] = fData.HitLinkUpData( row )[(unsigned int)hitIndex[i]];
     }
 #endif
     // the second hit in the Tracklet is also guaranteed to have a link up, since StartHitsFinder

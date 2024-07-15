@@ -99,15 +99,15 @@ inline void AliHLTTPCCAGrid::GetBinBounded( const float_v &Y, const float_v &Z, 
 //   *bZ = CAMath::Max( uint_v( Vc::Zero ), CAMath::Min( uint_v( fNz - 1 ), zBin ) );
 // IKu bag was here   :  -1 = 65000 > 0  !
 
-  const int_v &yBin = ( Y * fStepYInv - fYMinOverStep ).staticCast<int_v>();
-  const int_v &zBin = ( Z * fStepZInv - fZMinOverStep ).staticCast<int_v>();
+  const int_v &yBin = static_cast<int_v>( Y * fStepYInv - fYMinOverStep );
+  const int_v &zBin = static_cast<int_v>( Z * fStepZInv - fZMinOverStep );
 
-  *bY = CAMath::Max( int_v( Vc::Zero ), CAMath::Min( int_v( fNy - 1 ), yBin ) ).staticCast<uint_v>();
-  *bZ = CAMath::Max( int_v( Vc::Zero ), CAMath::Min( int_v( fNz - 1 ), zBin ) ).staticCast<uint_v>();
-  for( unsigned int i = 0; i < float_v::Size; i++ ) {
-    (*bY)[i] = (int)(*bY)[i];
-    (*bZ)[i] = (int)(*bZ)[i];
-  }
+  *bY = CAMath::Max( int_v( 0 ), static_cast<uint_v>( CAMath::Min( int_v( fNy - 1 ), yBin ) ) );
+  *bZ = CAMath::Max( int_v( 0 ), static_cast<uint_v>( CAMath::Min( int_v( fNz - 1 ), zBin ) ) );
+//  for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {	//TODO: GK: check the correctness if working with int instead of uint
+//    (*bY)[i] = (int)(*bY)[i];
+//    (*bZ)[i] = (int)(*bZ)[i];
+//  }
 }
 
 inline unsigned int AliHLTTPCCAGrid::GetBinBounded( const float &Y, const float &Z ) const

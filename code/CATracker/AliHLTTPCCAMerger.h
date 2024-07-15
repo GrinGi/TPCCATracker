@@ -128,7 +128,7 @@ class AliHLTTPCCAMerger
   void FindNeighbourTracks(int number=0);
   void Merging(int number=0);
   float_m AddNeighbour( const uint_v& jIndexes, const int& nVecElements, const float_m& isNeighbour,
-  int hits[2000][uint_v::Size], uint_v& firstHit, AliHLTTPCCATrackParamVector& vStartPoint, AliHLTTPCCATrackParamVector& vEndPoint, float_v& vStartAlpha, float_v& vEndAlpha, uint_v& vNHits );
+  int hits[2000][uint_v::SimdLen], uint_v& firstHit, AliHLTTPCCATrackParamVector& vStartPoint, AliHLTTPCCATrackParamVector& vEndPoint, float_v& vStartAlpha, float_v& vEndAlpha, uint_v& vNHits );
 
   void MergingFix(int number=0);
 
@@ -138,7 +138,7 @@ class AliHLTTPCCAMerger
   void ClearMemoryPT();
   void MergeUpPT( int s );
   void MergingPT( int number );
-  bool AddNeighbourPTSimple( int_v iTr, int_v jTr, int hits[2000][uint_v::Size], uint_v& vNHits );
+  bool AddNeighbourPTSimple( int_v iTr, int_v jTr, int hits[2000][uint_v::SimdLen], uint_v& vNHits );
   void MergingPTmultimap();
   // ---
 #endif
@@ -155,16 +155,16 @@ class AliHLTTPCCAMerger
   float_v &minL2v, const float &bestChi2, float_v& min_chi2, float_m& active );
 
     // helping functions
-  void ConvertPTrackParamToVector( const AliHLTTPCCATrackParam *t0[uint_v::Size], AliHLTTPCCATrackParamVector &t, const int &nTracksV);
-  void ConvertPTrackParamToVectorSimple( const AliHLTTPCCATrackParam *t0[uint_v::Size], AliHLTTPCCATrackParamVector &t, const int &nTracksV);
+  void ConvertPTrackParamToVector( const AliHLTTPCCATrackParam *t0[uint_v::SimdLen], AliHLTTPCCATrackParamVector &t, const int &nTracksV);
+  void ConvertPTrackParamToVectorSimple( const AliHLTTPCCATrackParam *t0[uint_v::SimdLen], AliHLTTPCCATrackParamVector &t, const int &nTracksV);
 
-  void ConvertPTrackParamToVectorAdd( AliHLTTPCCATrackParam *t0[uint_v::Size], AliHLTTPCCATrackParamVector &t, const int &nTracksV, float_m mask);
+  void ConvertPTrackParamToVectorAdd( AliHLTTPCCATrackParam *t0[uint_v::SimdLen], AliHLTTPCCATrackParamVector &t, const int &nTracksV, float_m mask);
 
   float_m FitTrack( AliHLTTPCCATrackParamVector &t, float_v &Alpha0V,
-                     int hits[2000][uint_v::Size], uint_v &firstHits, uint_v &NTrackHits,
+                     int hits[2000][uint_v::SimdLen], uint_v &firstHits, uint_v &NTrackHits,
                      int &nTracksV, float_m active0 = float_m(true), bool dir = 1 );
   float_m FitTrackMerged( AliHLTTPCCATrackParamVector &t, float_v &Alpha0V,
-                         int hits[100][uint_v::Size], uint_v &firstHits, uint_v &NTrackHits,
+                         int hits[100][uint_v::SimdLen], uint_v &firstHits, uint_v &NTrackHits,
                          int &nTracksV, float_m active0 = float_m(true), bool dir = 1 );
 
   unsigned int HitIndex( const uint_v& firstHits, const uint_v& nHits, bool dir, int iV, unsigned int i ) { // vectorized is slower
@@ -196,7 +196,8 @@ class AliHLTTPCCAMerger
   AliHLTTPCCAClusterInfo *fClusterInfos;  //* information about track clusters
 
   int fMaxTrackInfos;  //* booked size of fTrackInfos array
-  Vc::vector<AliHLTTPCCASliceTrackInfo> fTrackInfos; //* additional information for slice tracks
+//  Vc::vector<AliHLTTPCCASliceTrackInfo> fTrackInfos; //* additional information for slice tracks
+  std::vector<AliHLTTPCCASliceTrackInfo> fTrackInfos; //* additional information for slice tracks
   int fSliceTrackInfoStart[fgkNSlices];   //* slice starting index in fTrackInfos array;
   int fSliceNTrackInfos[fgkNSlices];      //* N of slice track infos in fTrackInfos array;
 
@@ -292,22 +293,22 @@ class AliHLTTPCCAMerger::AliHLTTPCCASliceTrackInfoV
     }
 
     void SetNClustersV( int_v ncl, int i ) { fNClusters[i] = ncl; }
-    void SetNClusters( int ncl, int iV, int i ) { fNClusters[i][iV] = ncl; }
+    void SetNClusters( int ncl, int iV, int i ) { fNClusters[i].insert(iV, ncl); }//[iV] = ncl; }
     int_v NClusters( int i ) { return fNClusters[i]; }
 
     void SetFirstClusterRefV( int_v fcl, int i ) { fFirstClusterRef[i] = fcl; }
-    void SetFirstClusterRef( int fcl, int iV, int i ) { fFirstClusterRef[i][iV] = fcl; }
+    void SetFirstClusterRef( int fcl, int iV, int i ) { fFirstClusterRef[i].insert(iV, fcl); }//[iV] = fcl; }
     int_v FirstClusterRef( int i ) { return fFirstClusterRef[i]; }
 
     void AddSegment() { fNSegments++; }
     int NSegments() { return fNSegments; }
 
     void SetUsedV( int_v u ) { fUsed = u; }
-    void SetUsed( int u, int i ) { fUsed[i] = u; }
+    void SetUsed( int u, int i ) { fUsed.insert(i, u); }//[i] = u; }
     int_v Used() { return fUsed; }
 
     void SetActiveV( int_m a ) { fActive = a; }
-    void SetActive( bool a, int i ) { fActive[i] = a; }
+    void SetActive( bool a, int i ) { fActive.insert(i, a); }//[i] = a; }
     int_m Active() { return fActive; }
 
   private:
@@ -422,94 +423,94 @@ class AliHLTTPCCAMerger::AliHLTTPCCASliceTrackInfo
 
 //#include "AliHLTTPCCATrackParamVector.h"
 
-inline void AliHLTTPCCAMerger::ConvertPTrackParamToVector( const AliHLTTPCCATrackParam *t0[uint_v::Size], AliHLTTPCCATrackParamVector &t, const int &nTracksV)
+inline void AliHLTTPCCAMerger::ConvertPTrackParamToVector( const AliHLTTPCCATrackParam *t0[uint_v::SimdLen], AliHLTTPCCATrackParamVector &t, const int &nTracksV)
 {
-  float_v tmpFloat;
-  int_v tmpShort;
+  float_v tmpFloat( 0.f );
+  int_v tmpShort( 0 );
 
-  for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat[iV] = t0[iV]->X();
+  for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat.insert(iV, t0[iV]->X());//[iV] = t0[iV]->X();
   t.SetX(tmpFloat);
-  for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat[iV] = t0[iV]->SignCosPhi();
+  for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat.insert(iV, t0[iV]->SignCosPhi());//[iV] = t0[iV]->SignCosPhi();
   t.SetSignCosPhi(tmpFloat);
 
   for(int iP=0; iP<5; iP++)
   {
-    for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat[iV] = t0[iV]->Par()[iP];
+    for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat.insert(iV, t0[iV]->Par()[iP]);//[iV] = t0[iV]->Par()[iP];
     t.SetPar(iP,tmpFloat);
   }
   for(int iC=0; iC<15; iC++)
   {
-    for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat[iV] = t0[iV]->Cov()[iC];
+    for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat.insert(iV, t0[iV]->Cov()[iC]);//[iV] = t0[iV]->Cov()[iC];
     t.SetCov(iC,tmpFloat);
   }
-  for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat[iV] = t0[iV]->Chi2();
+  for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat.insert(iV, t0[iV]->Chi2());//[iV] = t0[iV]->Chi2();
   t.SetChi2(tmpFloat);
-  for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpShort[iV] = t0[iV]->NDF();
+  for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpShort.insert(iV, t0[iV]->NDF());//[iV] = t0[iV]->NDF();
   t.SetNDF(tmpShort);
 }
 
-inline void AliHLTTPCCAMerger::ConvertPTrackParamToVectorAdd( AliHLTTPCCATrackParam *t0[uint_v::Size], AliHLTTPCCATrackParamVector &t, const int &nTracksV, float_m mask)
+inline void AliHLTTPCCAMerger::ConvertPTrackParamToVectorAdd( AliHLTTPCCATrackParam *t0[uint_v::SimdLen], AliHLTTPCCATrackParamVector &t, const int &nTracksV, float_m mask)
 {
   float_v tmpFloat;
   int_v tmpShort;
 
   for(int iV=0; iV < nTracksV; iV++) {
-    if(mask[iV]) tmpFloat[iV] = t0[iV]->X();
-    else tmpFloat[iV] = t.X()[iV];
+    if(mask[iV]) tmpFloat.insert(iV, t0[iV]->X());//[iV] = t0[iV]->X();
+    else tmpFloat.insert(iV, t.X()[iV]);//[iV] = t.X()[iV];
   }
   t.SetX(tmpFloat);
   for(int iV=0; iV < nTracksV; iV++) {
-      if(mask[iV]) tmpFloat[iV] = t0[iV]->SignCosPhi();
-      else tmpFloat[iV] = t.SignCosPhi()[iV];
+      if(mask[iV]) tmpFloat.insert(iV, t0[iV]->SignCosPhi());//[iV] = t0[iV]->SignCosPhi();
+      else tmpFloat.insert(iV, t.SignCosPhi()[iV]);//[iV] = t.SignCosPhi()[iV];
   }
   t.SetSignCosPhi(tmpFloat);
 
   for(int iP=0; iP<5; iP++)
   {
     for(int iV=0; iV < nTracksV; iV++) {
-	if(mask[iV]) tmpFloat[iV] = t0[iV]->Par()[iP];
-	else tmpFloat[iV] = t.Par()[iP][iV];
+	if(mask[iV]) tmpFloat.insert(iV, t0[iV]->Par()[iP]);//[iV] = t0[iV]->Par()[iP];
+	else tmpFloat.insert(iV, t.Par()[iP][iV]);//[iV] = t.Par()[iP][iV];
     }
     t.SetPar(iP,tmpFloat);
   }
   for(int iC=0; iC<15; iC++)
   {
     for(int iV=0; iV < nTracksV; iV++) {
-	if(mask[iV]) tmpFloat[iV] = t0[iV]->Cov()[iC];
-	else tmpFloat[iV] = t.Cov()[iC][iV];
+	if(mask[iV]) tmpFloat.insert(iV, t0[iV]->Cov()[iC]);//[iV] = t0[iV]->Cov()[iC];
+	else tmpFloat.insert(iV, t.Cov()[iC][iV]);//[iV] = t.Cov()[iC][iV];
     }
     t.SetCov(iC,tmpFloat);
   }
   for(int iV=0; iV < nTracksV; iV++) {
-      if(mask[iV]) tmpFloat[iV] = t0[iV]->Chi2();
-      else tmpFloat[iV] = t.Chi2()[iV];
+      if(mask[iV]) tmpFloat.insert(iV, t0[iV]->Chi2());//[iV] = t0[iV]->Chi2();
+      else tmpFloat.insert(iV, t.Chi2()[iV]);//[iV] = t.Chi2()[iV];
   }
   t.SetChi2(tmpFloat);
   for(int iV=0; iV < nTracksV; iV++) {
-      if(mask[iV]) tmpShort[iV] = t0[iV]->NDF();
-      else tmpShort[iV] = t.NDF()[iV];
+      if(mask[iV]) tmpShort.insert(iV, t0[iV]->NDF());//[iV] = t0[iV]->NDF();
+      else tmpShort.insert(iV, t.NDF()[iV]);//[iV] = t.NDF()[iV];
   }
   t.SetNDF(tmpShort);
 }
 
-inline void AliHLTTPCCAMerger::ConvertPTrackParamToVectorSimple( const AliHLTTPCCATrackParam *t0[uint_v::Size], AliHLTTPCCATrackParamVector &t, const int &nTracksV)
+inline void AliHLTTPCCAMerger::ConvertPTrackParamToVectorSimple( const AliHLTTPCCATrackParam *t0[uint_v::SimdLen], AliHLTTPCCATrackParamVector &t, const int &nTracksV)
 {
   float_v tmpFloat;
   int_v tmpShort;
 
-  for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat[iV] = t0[iV]->X();
+  for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat.insert(iV, t0[iV]->X());//[iV] = t0[iV]->X();
   t.SetX(tmpFloat);
-  for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat[iV] = t0[iV]->SignCosPhi();
+  for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat.insert(iV, t0[iV]->SignCosPhi());//[iV] = t0[iV]->SignCosPhi();
   t.SetSignCosPhi(tmpFloat);
 
   for(int iP=0; iP<5; iP++)
   {
-    for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat[iV] = t0[iV]->Par()[iP];
+    for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat.insert(iV, t0[iV]->Par()[iP]);//[iV] = t0[iV]->Par()[iP];
     t.SetPar(iP,tmpFloat);
   }
-  for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat[iV] = t0[iV]->Chi2();
+  for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpFloat.insert(iV, t0[iV]->Chi2());//[iV] = t0[iV]->Chi2();
   t.SetChi2(tmpFloat);
-  for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpShort[iV] = t0[iV]->NDF();
+  for(int iV=0; iV < nTracksV; iV++) if(t0[iV]) tmpShort.insert(iV, t0[iV]->NDF());//[iV] = t0[iV]->NDF();
   t.SetNDF(tmpShort);
 }
 
@@ -530,7 +531,8 @@ inline void AliHLTTPCCAMerger::InvertCholetsky(float_v a[15])
       uud += u[j][i]*u[j][i]*d[j];
     uud = a[i*(i+3)/2] - uud;
     float_m small_val = CAMath::Abs(uud)<1.e-12f;
-    uud(small_val) = 1.e-12f;
+//    uud(small_val) = 1.e-12f;
+    uud = KFP::SIMD::select(small_val, 1.e-12f, uud);
     d[i] = uud/CAMath::Abs(uud);
     u[i][i] = sqrt(CAMath::Abs(uud));
 
@@ -665,20 +667,26 @@ inline void AliHLTTPCCAMerger::FilterTracks(const float_v r[5], const float_v C[
   for(int i=0; i<5; i++) dzeta[i] = m[i] - r[i];
   float_v KC[15];
   MultiplyMS(K,C,KC);
-  for(int i=0; i< 15; i++)
-    W[i](mask) -= KC[i];
+  for(int i=0; i< 15; i++) {
+//    W[i](mask) -= KC[i];
+    W[i] = KFP::SIMD::select(mask, W[i] - KC[i], W[i]);
+  }
 
-  float_v kd(Vc::Zero);
+  float_v kd( 0.f );
   for(int i=0; i<5; i++)
   {
     kd = 0.f;
-    for(int j=0; j<5; j++)
+    for(int j=0; j<5; j++) {
       kd += K[i][j]*dzeta[j];
-    R[i](mask) += kd;
+    }
+//    R[i](mask) += kd;
+    R[i] = KFP::SIMD::select (mask, R[i] + kd, R[i]);
   }
   float_v S_dzeta[5];
   MultiplySR(S, dzeta, S_dzeta);
-  chi2(mask) = dzeta[0]*S_dzeta[0] + dzeta[1]*S_dzeta[1] + dzeta[2]*S_dzeta[2] + dzeta[3]*S_dzeta[3] + dzeta[4]*S_dzeta[4];
+//  chi2(mask) = dzeta[0]*S_dzeta[0] + dzeta[1]*S_dzeta[1] + dzeta[2]*S_dzeta[2] + dzeta[3]*S_dzeta[3] + dzeta[4]*S_dzeta[4];
+  chi2 = KFP::SIMD::select( mask, dzeta[0] * S_dzeta[0] + dzeta[1] * S_dzeta[1] + dzeta[2] * S_dzeta[2]
+	                   + dzeta[3] * S_dzeta[3] + dzeta[4] * S_dzeta[4], chi2 );
 }
 
 

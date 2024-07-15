@@ -458,16 +458,11 @@ void AliHLTTPCCASlicePerformance::FillHistos()
       }*/
         // ---
         double mcY =  points[iMCPoint].X() * cosA + points[iMCPoint].Y() * sinA;
-        double mcX = -(-points[iMCPoint].X() * sinA + points[iMCPoint].Y() * cosA);
-//        std::cout<<"     p.x: "<<p.GetX()<<";   mcX: "<<mcX<<";   p.y: "<<p.GetY()<<";   mcY: "<<mcY<<";   p.z: "<<p.GetZ()<<";   mcZ: "<<points[iMCPoint].Z()<<"\n";
+//        double mcX = -(-points[iMCPoint].X() * sinA + points[iMCPoint].Y() * cosA);
         // ---
         if(points[iMCPoint].IRow() == hit.IRow())
         {
-//            std::cout<<" --- iRow: "<<hit.IRow()<<";   h.y: "<<hit.Y()<<";   p.y: "<<points[iMCPoint].Y()
-//        	<<";   h.z: "<<hit.Z()<<";   p.z: "<<points[iMCPoint].Z()
-//		<<" ||| mcY: "<<mcY<<"\n";
-//          if(fabs(hit.Y() - points[iMCPoint].Y())<2 && fabs(hit.Z() - points[iMCPoint].Z())<2)
-          if(fabs(hit.Y() - mcY)<2 && fabs(hit.Z() - points[iMCPoint].Z())<2)
+          if(fabs(hit.Y() - mcY) < 2 && fabs(hit.Z() - points[iMCPoint].Z()) < 2)
             MCindex = iMCPoint;
         }
       }
@@ -475,11 +470,8 @@ void AliHLTTPCCASlicePerformance::FillHistos()
       {
         break;
       }
-//        if(iRowMin == 10000) continue;
+
       // ---
-//      const AliHLTTPCCAGBTrack &t1 = fTracker->Tracks()[itr];
-//      double cosA = TMath::Cos( t1.Alpha() );
-//      double sinA = TMath::Sin( t1.Alpha() );
       double mcY =  points[MCindex].X() * cosA + points[MCindex].Y() * sinA;
       double mcX = -(-points[MCindex].X() * sinA + points[MCindex].Y() * cosA);
       // ---

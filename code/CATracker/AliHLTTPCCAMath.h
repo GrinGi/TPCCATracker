@@ -49,17 +49,32 @@
 namespace CAMath
 {
   template<typename T> static inline T Min ( const T &x, const T &y ) { return std::min( x, y ); }
+  template<> inline float_v Min ( const float_v &x, const float_v &y ) { return min( x, y ); }
+  template<> inline int_v Min ( const int_v &x, const int_v &y ) { return min( x, y ); }
   template<typename T> static inline T Max ( const T &x, const T &y ) { return std::max( x, y ); }
+  template<> inline float_v Max ( const float_v &x, const float_v &y ) { return max( x, y ); }
+  template<> inline int_v Max ( const int_v &x, const int_v &y ) { return max( x, y ); }
   template<typename T> static inline T Sqrt( const T &x ) { return std::sqrt( x ); }
+  template<> inline float_v Sqrt( const float_v &x ) { return sqrt( x ); }
   template<typename T> static inline T RSqrt( const T &x ) { const T one = 1.; return one / std::sqrt( x ); }
-  template<typename T> typename Vc::Vector<T> RSqrt(const Vc::Vector<T> &x) { return Vc::rsqrt( x ); }
+//  template<typename T> typename Vc::Vector<T> RSqrt(const Vc::Vector<T> &x) { return Vc::rsqrt( x ); }
+  template<> inline float_v RSqrt(const float_v &x) { return rsqrt( x ); }
   template<typename T> static inline T Abs ( const T &x ) { return std::abs( x ); }
+  template<> inline float_v Abs ( const float_v &x ) { return abs( x ); }
+  template<> inline int_v Abs ( const int_v &x ) { return abs( x ); }
   template<typename T> static inline T Log ( const T &x ) { return std::log( x ); }
+  template<> inline float_v Log( const float_v &x ) { return log( x ); }
   template<typename T> static inline T Log10( const T &x ) { return std::log10( x ); }
   template<typename T> static inline T Sin  ( const T &x ) { return std::sin( x ); }
   template<typename T> static inline T Cos  ( const T &x ) { return std::cos( x ); }
+
+//  inline float Sin( float x ) { return std::sin( x ); }
+//  inline float Cos( float x ) { return std::cos( x ); }
+//  template<> inline float_v Sin  ( const float_v &x ) { return KFP::SIMD::Detail::sin<float_v>( x ); }
+//  template<> inline float_v Cos  ( const float_v &x ) { return KFP::SIMD::Detail::cos<float_v>( x ); }
   template<typename T> static T Reciprocal( const T &x );
-  template<typename T> typename Vc::Vector<T> Reciprocal(const Vc::Vector<T> &x) { return Vc::reciprocal( x ); }
+//  template<typename T> typename Vc::Vector<T> Reciprocal(const Vc::Vector<T> &x) { return Vc::reciprocal( x ); }
+  template<> float_v Reciprocal(const float_v &x) { return float_v( 1.f ) / x; }
   template<typename T> static T ApproxSqrt( const T &x );
 #ifdef USE_TBB
   template<typename T> static T AtomicMax( T volatile *addr, T val );
@@ -67,7 +82,8 @@ namespace CAMath
 
   template<typename T> struct FiniteReturnTypeHelper { typedef bool R; };
   template<typename T> static typename FiniteReturnTypeHelper<T>::R Finite( const T &x );
-  template<typename T> typename Vc::Vector<T>::Mask Finite(const Vc::Vector<T> &x) { return Vc::isfinite( x ); }
+//  template<typename T> typename Vc::Vector<T>::Mask Finite(const Vc::Vector<T> &x) { return Vc::isfinite( x ); }
+  inline float_m Finite(const float_v &x) { return KFP::SIMD::isFinite( x ); }
   
   template<typename T> static T Round( const T &x ) { return round( x ); }
 
@@ -75,9 +91,39 @@ namespace CAMath
   template<typename T> static T ATan2( const T &y, const T &x ) { return atan2( y, x ); }
   template<typename T> static T ASin( const T &x ) { return asin( x ); }
 
+  //TODO: implement SIMD versions of sin and cos in headers
+  template<> inline float_v Sin ( const float_v &x ) {
+    float_v res;
+    for( size_t i = 0; i < float_v::SimdLen; i++ ) {
+      res.insert(i, std::sin(x[i]));
+    }
+    return res;
+  }
+  template<> inline float_v Cos (const float_v &x) {
+  float_v res;
+  for( size_t i = 0; i < float_v::SimdLen; i++ ) {
+    res.insert (i, std::cos (x[i]));
+  }
+  return res;
+  }
+  template<> inline float_v ATan2 (const float_v &y, const float_v &x) {
+    float_v res;
+    for( size_t i = 0; i < float_v::SimdLen; i++ ) {
+      res.insert (i, std::atan2 (y[i], x[i]));
+    }
+    return res;
+  }
+  template<> inline float_v ASin (const float_v &x) {
+    float_v res;
+    for( size_t i = 0; i < float_v::SimdLen; i++ ) {
+      res.insert (i, std::asin (x[i]));
+    }
+    return res;
+  }
+
 #if 1  
   static bool IsZero( const float& x )   { return std::abs(x) < std::numeric_limits<float>::epsilon(); }
-  static float_m IsZero( const float_v& x ) { return std::abs(x) < std::numeric_limits<float_v>::epsilon(); }
+  static float_m IsZero( const float_v& x ) { return abs(x) < float_v( std::numeric_limits<float>::epsilon() ); }
 #endif
   float Tan( float x );
   float Copysign( float x, float y );

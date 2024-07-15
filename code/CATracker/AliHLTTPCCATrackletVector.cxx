@@ -19,9 +19,9 @@
 #include "AliHLTTPCCATrackletVector.h"
 
 AliHLTTPCCATrackletVector::AliHLTTPCCATrackletVector()
-    : fNHits( Vc::Zero ), fFirstRow( Vc::Zero ), fLastRow( Vc::Zero )
+    : fNHits( 0 ), fFirstRow( 0 ), fLastRow( 0 )
 {
-  const uint_v x = std::numeric_limits<uint_v>::max();
+  const uint_v x = uint_v( std::numeric_limits<int>::max() );
   for ( unsigned int i = 0; i < fRowHits.size(); ++i ) {
     reinterpret_cast<uint_v&>(fRowHits[i]) = x;
   }

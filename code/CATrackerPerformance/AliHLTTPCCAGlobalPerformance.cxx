@@ -311,7 +311,7 @@ void AliHLTTPCCAGlobalPerformance::MatchTracks()
     // ---
     if( traLabels < 0 ) { traPurity = 0; continue; }
     // ---
-    const AliHLTTPCCAMCTrack &mct = (*fMCTracks)[traLabels];
+//    const AliHLTTPCCAMCTrack &mct = (*fMCTracks)[traLabels];
     if ( lb ) delete[] lb;
 
     recoData[itr].SetMCTrack(traLabels, traPurity, nhits);
@@ -374,12 +374,12 @@ void AliHLTTPCCAGlobalPerformance::MatchTracks()
 	mcData[traLabels].AddReconstructed();
 	tCA1.SetReco( 1 );
 if( mcData[traLabels].NReconstructed() == 1 ) {
-    AliHLTTPCCAGBTrack &tCA1 = fTracker->Tracks()[itr];
+    /*AliHLTTPCCAGBTrack &*/tCA1 = fTracker->Tracks()[itr];
 //    tCA1.SetFirstMC(traLabels);
     mcData[traLabels].SetFirstTrackID(itr);
 }
 if( (mcData[traLabels].NReconstructed() > 1) && !(recoData[itr].IsGhost(PParameters::MinTrackPurity)) ) {
-    AliHLTTPCCAGBTrack &tCA1 = fTracker->Tracks()[itr];
+    /*AliHLTTPCCAGBTrack &*/tCA1 = fTracker->Tracks()[itr];
     tCA1.SetClone();
 }
     }
@@ -438,14 +438,14 @@ void AliHLTTPCCAGlobalPerformance::EfficiencyPerformance( )
     const bool reco = mc.IsReconstructed();
     const int clones = mc.GetNClones();
     // ---
-    const int clones1 = mc.GetNClones1();
+//    const int clones1 = mc.GetNClones1();
     const bool reco11 = mc.IsReconstructed1();
     // ---
-    const int clones4 = mc.GetNClones_mc4_15_r4();
-    const bool reco4 = mc.IsReconstructed_mc4_15_r4();
+//    const int clones4 = mc.GetNClones_mc4_15_r4();
+//    const bool reco4 = mc.IsReconstructed_mc4_15_r4();
 
-    const bool reco_all4 = mc.IsReconstructed_mc4_15_r4() || mc.IsReconstructed();
-    const int clones_all4 = mc.GetNClones_all4();
+//    const bool reco_all4 = mc.IsReconstructed_mc4_15_r4() || mc.IsReconstructed();
+//    const int clones_all4 = mc.GetNClones_all4();
     // ---
 
     if ( mc.GetSet() == 0){ // rest, out track
@@ -652,11 +652,11 @@ if( mcTrackNRecoHits[i] < 30 ) continue;
   for(int iRTr=0; iRTr < nRecoTracks; iRTr++){  // TODO: make common
     AliHLTTPCCAPerformanceRecoTrackData &recoD = recoData[iRTr];
     // ---
-    const AliHLTTPCCAGBTrack &tCA = fTracker->Tracks()[iRTr];
-#ifdef LOOPER_TEST
-    int mct = tCA.GetFirstMC();
-#endif
-    AliHLTTPCCAMCTrack &mcTr1 = (*fMCTracks)[ recoD.GetMCTrackId() ];
+//    const AliHLTTPCCAGBTrack &tCA = fTracker->Tracks()[iRTr];
+//#ifdef LOOPER_TEST
+//    int mct = tCA.GetFirstMC();
+//#endif
+//    AliHLTTPCCAMCTrack &mcTr1 = (*fMCTracks)[ recoD.GetMCTrackId() ];
     if( recoD.IsClone() ) continue;
     recoTrC1++;
     // ---

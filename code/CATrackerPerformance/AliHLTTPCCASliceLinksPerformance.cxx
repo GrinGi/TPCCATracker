@@ -187,7 +187,8 @@ void AliHLTTPCCASliceLinksPerformance::CollectTracks()
   nRecoTracks = sliceTracker->NTracklets();
 
   const SliceData &data = sliceTracker->Data();
-  const Vc::vector<AliHLTTPCCAStartHitId>& startHits = sliceTracker->TrackletStartHits();
+//  const Vc::vector<AliHLTTPCCAStartHitId>& startHits = sliceTracker->TrackletStartHits();
+  const std::vector<AliHLTTPCCAStartHitId>& startHits = sliceTracker->TrackletStartHits();
    
   for (int iTr = 0; iTr < nRecoTracks; iTr++) {
     PerfoTrack recoTrack;

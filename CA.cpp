@@ -115,7 +115,7 @@ int main(int argc, char **argv)
   
   int firstEvent = 0;
   int lastEvent = 1000000;
-  int iHLT = 0;
+  int iHLT __attribute__((unused)) = 0;
   int iXeonPhi = 1;
   string filePrefix = "./Events/"; 
   for( int i=1; i < argc; i++ ){

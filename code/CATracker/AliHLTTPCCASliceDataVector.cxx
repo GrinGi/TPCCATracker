@@ -50,7 +50,7 @@ void AliHLTTPCCASliceData::InitFromClusterData( const AliHLTTPCCAClusterData &da
 
   int numberOfHitsWithPadding = 0;
   for ( int row = data.FirstRow(); row <= data.LastRow(); ++row ) {
-    numberOfHitsWithPadding += NextMultipleOf<VectorAlignment>( data.NumberOfClusters( row ) );
+    numberOfHitsWithPadding += NextMultipleOf<SimdVectorAlignment>( data.NumberOfClusters( row ) );
   }
 
   const int numberOfRows = data.LastRow() - data.FirstRow() + 1;
@@ -65,19 +65,19 @@ void AliHLTTPCCASliceData::InitFromClusterData( const AliHLTTPCCAClusterData &da
     // IsUsedData
     numberOfHitsWithPadding * sizeof( StoredIsUsed ) +
     // FirstHitInBin
-    NextMultipleOf<VectorAlignment>( firstHitInBinSize * sizeof( int ) ) +
+    NextMultipleOf<SimdVectorAlignment>( firstHitInBinSize * sizeof( int ) ) +
     // HitWeights, ClusterDataIndex
     2 * numberOfHitsWithPadding * sizeof( int ) +
     // unused info
     numberOfHitsWithPadding * sizeof( PackHelper::TPackedY ) +
     numberOfHitsWithPadding * sizeof( PackHelper::TPackedZ ) +
     numberOfHitsWithPadding * sizeof( int ) +
-    NextMultipleOf<VectorAlignment>( firstHitInBinSize * sizeof( int ) );
+    NextMultipleOf<SimdVectorAlignment>( firstHitInBinSize * sizeof( int ) );
 
   if ( fMemorySize < memorySize ) {
     fMemorySize = memorySize;
     if (fMemory) delete[] fMemory;
-    fMemory = new char[fMemorySize + 12 * (VectorAlignment-1)]; // 12 is a number of terms in memorySize, each term needs from 0 to VectorAlignment-1 additional bytes for alighnment
+    fMemory = new char[fMemorySize + 12 * (SimdVectorAlignment - 1)]; // 12 is a number of terms in memorySize, each term needs from 0 to VectorAlignment-1 additional bytes for alighnment
   }
 
   int *linkUpData;
@@ -94,23 +94,23 @@ void AliHLTTPCCASliceData::InitFromClusterData( const AliHLTTPCCAClusterData &da
   unsigned int *firstUnusedHitInBin;
   
   char *mem = fMemory;
-  AssignMemoryAligned<VectorAlignment>( linkUpData,   mem, numberOfHitsWithPadding );
-  AssignMemoryAligned<VectorAlignment>( linkDownData, mem, numberOfHitsWithPadding );
-  AssignMemoryAligned<VectorAlignment>( hitPDataY,    mem, numberOfHitsWithPadding );
-  AssignMemoryAligned<VectorAlignment>( hitPDataZ,    mem, numberOfHitsWithPadding );
-  AssignMemoryAligned<VectorAlignment>( hitDataIsUsed,     mem, numberOfHitsWithPadding );
+  AssignMemoryAligned<SimdVectorAlignment>( linkUpData,   mem, numberOfHitsWithPadding );
+  AssignMemoryAligned<SimdVectorAlignment>( linkDownData, mem, numberOfHitsWithPadding );
+  AssignMemoryAligned<SimdVectorAlignment>( hitPDataY,    mem, numberOfHitsWithPadding );
+  AssignMemoryAligned<SimdVectorAlignment>( hitPDataZ,    mem, numberOfHitsWithPadding );
+  AssignMemoryAligned<SimdVectorAlignment>( hitDataIsUsed,     mem, numberOfHitsWithPadding );
   /*
    * The size of the array is row.Grid.N + row.Grid.Ny + 3. The row.Grid.Ny + 3 is an optimization
    * to remove the need for bounds checking. The last values are the same as the entry at [N - 1].
    */
-  AssignMemoryAligned<VectorAlignment>( firstHitInBin,  mem, firstHitInBinSize );
-  AssignMemoryAligned<VectorAlignment>( hitWeights,   mem, numberOfHitsWithPadding );
-  AssignMemoryAligned<VectorAlignment>( clusterDataIndex, mem, numberOfHitsWithPadding );
+  AssignMemoryAligned<SimdVectorAlignment>( firstHitInBin,  mem, firstHitInBinSize );
+  AssignMemoryAligned<SimdVectorAlignment>( hitWeights,   mem, numberOfHitsWithPadding );
+  AssignMemoryAligned<SimdVectorAlignment>( clusterDataIndex, mem, numberOfHitsWithPadding );
   
-  AssignMemoryAligned<VectorAlignment>( unusedHitPDataY, mem, numberOfHitsWithPadding );
-  AssignMemoryAligned<VectorAlignment>( unusedHitPDataZ, mem, numberOfHitsWithPadding );
-  AssignMemoryAligned<VectorAlignment>( hitIndex, mem, numberOfHitsWithPadding );
-  AssignMemoryAligned<VectorAlignment>( firstUnusedHitInBin,  mem, firstHitInBinSize );
+  AssignMemoryAligned<SimdVectorAlignment>( unusedHitPDataY, mem, numberOfHitsWithPadding );
+  AssignMemoryAligned<SimdVectorAlignment>( unusedHitPDataZ, mem, numberOfHitsWithPadding );
+  AssignMemoryAligned<SimdVectorAlignment>( hitIndex, mem, numberOfHitsWithPadding );
+  AssignMemoryAligned<SimdVectorAlignment>( firstUnusedHitInBin,  mem, firstHitInBinSize );
 
 #ifndef NVALGRIND
   ////////////////////////////////////
@@ -248,7 +248,7 @@ void AliHLTTPCCASliceData::InitFromClusterData( const AliHLTTPCCAClusterData &da
     }
 
     gridContentOffset += nn;
-    hitNumberOffset += NextMultipleOf<VectorAlignment>( row.fNHits );
+    hitNumberOffset += NextMultipleOf<SimdVectorAlignment>( row.fNHits );
   }
 
   for ( int rowIndex = data.LastRow() + 1; rowIndex < AliHLTTPCCAParameters::MaxNumberOfRows8; ++rowIndex ) { // later data members of fRows[NRows()] will be used as end pointers for loops over rows
@@ -274,10 +274,10 @@ void AliHLTTPCCASliceData::InitFromClusterData( const AliHLTTPCCAClusterData &da
 
 void AliHLTTPCCASliceData::ClearHitWeights()
 {
-  const uint_v v0( Vc::Zero );
+  const uint_v v0( 0 );
   const unsigned int *const end = fRows[fParam->NRows()].fHitWeights;
-  for ( unsigned int *mem = fRows[0].fHitWeights; mem < end; mem += v0.Size ) {
-    for( unsigned int i = 0; i < float_v::Size; i++ ) {
+  for ( unsigned int *mem = fRows[0].fHitWeights; mem < end; mem += uint_v::SimdLen/*v0.Size*/ ) {
+    for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
       mem[i] = v0[i];
     }
   }
@@ -287,14 +287,14 @@ void AliHLTTPCCASliceData::ClearLinks()
 {
   const int_v v0( -1 );
   const int *const end1 = fRows[fParam->NRows()].fLinkUpData;
-  for ( int *mem = fRows[0].fLinkUpData; mem < end1; mem += v0.Size ) {
-    for( unsigned int i = 0; i < float_v::Size; i++ ) {
+  for ( int *mem = fRows[0].fLinkUpData; mem < end1; mem += int_v::SimdLen/*v0.Size*/ ) {
+    for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
       mem[i] = v0[i];
     }
   }
   const int *const end2 = fRows[fParam->NRows()].fLinkDownData;
-  for ( int *mem = fRows[0].fLinkDownData; mem < end2; mem += v0.Size ) {
-    for( unsigned int i = 0; i < float_v::Size; i++ ) {
+  for ( int *mem = fRows[0].fLinkDownData; mem < end2; mem += int_v::SimdLen/*v0.Size*/ ) {
+    for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
       mem[i] = v0[i];
     }
   }

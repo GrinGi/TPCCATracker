@@ -72,8 +72,8 @@ class AliHLTTPCCATracklet
 
     void ClearRowHits() {
       std::cout<<"!WARNING: unused function, should be deleted\n";
-      const int_v zero( Vc::Zero );
-      STATIC_ASSERT( AliHLTTPCCAParameters::MaxNumberOfRows8 % int_v::Size == 0, Size_of_fRowHits_array_needs_to_be_a_multiple_of_int_v__Size );
+      const int_v zero( 0 );
+      STATIC_ASSERT( AliHLTTPCCAParameters::MaxNumberOfRows8 % int_v::SimdLen == 0, Size_of_fRowHits_array_needs_to_be_a_multiple_of_int_v__Size );
     }
 
   private:
@@ -82,7 +82,7 @@ class AliHLTTPCCATracklet
     int fFirstRow;              // first TPC row
     int fLastRow;               // last TPC row
     AliHLTTPCCATrackParam fParam; // tracklet parameters
-    AliHLTFixedArray<int, AliHLTArraySize<AliHLTTPCCAParameters::MaxNumberOfRows8>, VectorAlignment> fRowHits; // hit index for each TPC row
+    AliHLTFixedArray<int, AliHLTArraySize<AliHLTTPCCAParameters::MaxNumberOfRows8>, SimdVectorAlignment> fRowHits; // hit index for each TPC row
 };
 
 #endif

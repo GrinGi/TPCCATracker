@@ -47,13 +47,14 @@
 void AliHLTTPCCAStartHitsFinder::run( AliHLTTPCCATracker &tracker, SliceData &data, int iter )
 {
 
-  Vc::vector<AliHLTTPCCAStartHitId>& startHits = tracker.TrackletStartHits();
+//  Vc::vector<AliHLTTPCCAStartHitId>& startHits = tracker.TrackletStartHits();
+  std::vector<AliHLTTPCCAStartHitId>& startHits = tracker.TrackletStartHits();
 
   //TODO parallel_for
   const int rowStep = AliHLTTPCCAParameters::RowStep;
   const int lastRow = tracker.Param().NRows() - rowStep*2;
   for ( int rowIndex = 0; rowIndex <= lastRow; ++rowIndex ) {
-    
+//std::cout<<">rowIndex: "<<rowIndex<<"\n";
 #ifdef USE_TBB
     int hitsStartOffset = CAMath::AtomicAdd( tracker.NTracklets(), 0 );
 #else //USE_TBB
@@ -66,18 +67,19 @@ void AliHLTTPCCAStartHitsFinder::run( AliHLTTPCCATracker &tracker, SliceData &da
 
     // look through all the hits and look for
     const int numberOfHits = row.NHits();
-    for ( int hitIndex = 0; hitIndex < numberOfHits; hitIndex += int_v::Size ) {
-      const int_v hitIndexes = int_v( Vc::IndexesFromZero ) + hitIndex;
+    for ( int hitIndex = 0; hitIndex < numberOfHits; hitIndex += int_v::SimdLen ) {
+      const int_v hitIndexes = int_v::iota( 0 )/*( Vc::IndexesFromZero )*/ + hitIndex;
       int_m validHitsMask = hitIndexes < numberOfHits;
       int_v hitDataTemp;
-      for( unsigned int ii = 0; ii < float_v::Size; ii++ ) {
-      	hitDataTemp[ii] = data.HitDataIsUsed( row )[(unsigned int)hitIndexes[ii]];
+      for( unsigned int ii = 0; ii < float_v::SimdLen; ii++ ) {
+//      	hitDataTemp[ii] = data.HitDataIsUsed( row )[(unsigned int)hitIndexes[ii]];
+	hitDataTemp.insert(ii, data.HitDataIsUsed( row )[(size_t)hitIndexes[ii]]);
       }
-      validHitsMask &= ( hitDataTemp == int_v( Vc::Zero ) );
-      
+      validHitsMask &= ( hitDataTemp == int_v( 0 ) );
       // hits that have a link up but none down == the start of a Track
       const int_v &middleHitIndexes = data.HitLinkUpData( row, hitIndex );
-      validHitsMask &= ( data.HitLinkDownData( row, hitIndex ) < int_v( Vc::Zero ) ) && ( middleHitIndexes >= int_v( Vc::Zero ) );
+      validHitsMask &= ( data.HitLinkDownData( row, hitIndex ) < int_v( 0 ) ) && ( middleHitIndexes >= int_v( 0 ) );
+
       if ( !validHitsMask.isEmpty() ) { // start hit has been found
 
           // find the length
@@ -85,11 +87,12 @@ void AliHLTTPCCAStartHitsFinder::run( AliHLTTPCCATracker &tracker, SliceData &da
         int nRows = 2;
         int_v upperHitIndexes = middleHitIndexes;
         for (;!validHitsMask.isEmpty() && nRows < AliHLTTPCCAParameters::NeighboursChainMinLength[iter];) {
-          for( unsigned int i = 0; i < float_v::Size; i++ ) {
+          for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
             if( !validHitsMask[i] ) continue;
-            upperHitIndexes[i] = data.HitLinkUpData( data.Row( iRow ) )[(unsigned int)upperHitIndexes[i]];
+//            upperHitIndexes[i] = data.HitLinkUpData( data.Row( iRow ) )[(unsigned int)upperHitIndexes[i]];
+            upperHitIndexes.insert(i, data.HitLinkUpData( data.Row( iRow ))[(size_t)upperHitIndexes[i]]);
           }
-          validHitsMask &= upperHitIndexes >= int_v( Vc::Zero );
+          validHitsMask &= upperHitIndexes >= int_v( 0 );
           nRows++;
           iRow += rowStep;
         }
@@ -98,28 +101,32 @@ void AliHLTTPCCAStartHitsFinder::run( AliHLTTPCCATracker &tracker, SliceData &da
         if ( !goodChains.isEmpty() ) { 
             // set all hits in the chain as used
           data.SetHitAsUsed( row, static_cast<uint_v>( hitIndexes ), goodChains );
-
           int iRow2 = rowIndex + 1*rowStep;
-          uint_v nHits(Vc::Zero);
-          nHits(goodChains) = 2;
+          uint_v nHits(0);
+//          nHits(goodChains) = 2;
+//          nHits = KFP::SIMD::select(goodChains, nHits, 2);
+          nHits = KFP::SIMD::select(goodChains, 2, nHits);
           AliHLTTPCCARow curRow2;
           int_v upperHitIndexes2 = middleHitIndexes;
           for (;!goodChains.isEmpty();) {
             curRow2 = data.Row( iRow2 );
 
             data.SetHitAsUsed( curRow2, static_cast<uint_v>( upperHitIndexes2 ), goodChains );
-            for( unsigned int i = 0; i < float_v::Size; i++ ) {
+            for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
               if( !goodChains[i] ) continue;
-              upperHitIndexes2[i] = data.HitLinkUpData( curRow2 )[(unsigned int)upperHitIndexes2[i]];
+              upperHitIndexes2.insert(i, data.HitLinkUpData( curRow2 )[(unsigned int)upperHitIndexes2[i]]);//[i] = data.HitLinkUpData( curRow2 )[(unsigned int)upperHitIndexes2[i]];
             }
-            goodChains &= upperHitIndexes2 >= int_v( Vc::Zero );
-            nHits(goodChains)++;
+            goodChains &= upperHitIndexes2 >= int_v( 0 );
+//            nHits(goodChains)++;
+//            nHits = KFP::SIMD::select(goodChains, nHits, nHits + 1);
+            nHits = KFP::SIMD::select(goodChains, nHits + 1, nHits);
             iRow2 += rowStep;
           }
 
-          for( unsigned int i = 0; i < int_v::Size; i++ ) {
+          for( unsigned int i = 0; i < int_v::SimdLen; i++ ) {
             if(!validHitsMask[i]) continue;
             startHits[hitsStartOffset + startHitsCount++].Set( rowIndex, hitIndex + i, nHits[i] );
+//std::cout<<" - start hit: "<<rowIndex<<", "<<hitIndex + i<<", "<<nHits[i]<<"\n";
           }
 
           //   // check free space
