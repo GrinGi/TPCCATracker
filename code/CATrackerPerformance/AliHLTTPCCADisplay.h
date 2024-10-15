@@ -96,9 +96,11 @@ class AliHLTTPCCADisplay
     void DrawTPC();
     void DrawSlice( AliHLTTPCCATracker *slice, bool DrawRows = 0, bool DrawGrid = 1 );
     // ---
+#if 0
     void DrawSliceGridPT( AliHLTTPCCATracker *slice, int np = 10, int nt = 15 );
     void DrawRow5();
     void DrawHitsRow5( AliHLTTPCCATracker *slice, int r, int color = -1, Size_t width = -1 );
+#endif
     // ---
 ///mvz start 20.01.2010
     void DrawPoint(float x, float y, float z, int Start = 1, float width = 1 );
@@ -137,7 +139,7 @@ class AliHLTTPCCADisplay
     void DrawSliceLink( int iRow, int iHit, int colorUp = -1, int colorDn = -1, int width = -1 );
     void DrawSliceLinkPT( int iRow, int iHit, int colorUp = -1, int colorDn = -1, int width = -1 );
 
-    void DrawTetaTrack( float teta, int iSlice, int pSlice, int nSlice );
+    void DrawTetaTrack( float teta, int iSlice );
     void DrawTetaTrackMerged( float iTeta, float nTeta, float iSlice, float nSlice, bool ok = false, bool okmc = false );
     void DrawDzDsPtTrack( float dzds, float pt, bool ok = false, bool ok1 = false );
 
@@ -152,27 +154,41 @@ class AliHLTTPCCADisplay
     void DrawWrongMerge( float x0, float x1, float y0, float y1 );
     void DrawCorrectMerge( float x0, float x1, float y0, float y1, bool ok = false );
 
+#if 0
     void DrawSliceHitsTest( int color = -1, Size_t width = -1 );
+#endif
     void DrawSliceLine( float x1, float y1, float z1, float x2, float y2, float z2, int color = kBlue, float width = 1. );
+#if 0
     void DrawSliceLineUV( float x1, float y1, float z1, float x2, float y2, float z2, int color = kBlue, float width = 1. );
     void DrawSliceLineUVXZ( float x1, float u1, float v1, float z1, float x2, float u2, float v2, float z2, int color = kBlue, float width = 1. );
     void DrawSliceLineUVXZnoFabs( float x1, float u1, float v1, float z1, float x2, float u2, float v2, float z2, int color = kBlue, float width = 1. );
     void DrawNumber( float x, float u, float v, float z, int N, float width = 1. );
+#endif
     void DrawCircle( float x, float y, float r, int color = kBlack, float width = -1 );
+#if 0
     void DrawPV( float x, float y, float z );
     void DrawUVZero( float x, float y, float z );
+#endif
     void DrawPointXYZ(float x, float y, float z, int color = -1, Size_t width = -1 );
+#if 0
     void DrawNumber( float x, float y, float z, int num, int color = -1 );
     void InitUVXYtest( AliHLTTPCCATracker *slice, float y0 = -0.005, float x0 = -0.0001, float y1 = 0.005, float x1 = 0.017 );
 //    void ClearUVXYtest();
+#endif
     void DrawCircleUVXYtest( float x, float y, float r, int color = kBlack, float width = -1 );
     void DrawPointXZ(float x, float z, int color = -1, Size_t width = -1 );
+#if 0
     void DrawPVUVXY( float x, float y, float u, float v );
+#endif
     void DrawPointXZfromXY(float x, float z, int color = -1, Size_t width = -1 );
     void DrawCircleXZfromXY( float x, float y, float r, int color = kBlack, float width = -1 );
+#if 0
     void DrawSliceLineUVXYtest( float x1, float y1, float u1, float v1, float x2, float y2, float u2, float v2, int color = kBlue, float width = 1. );
+#endif
     void DrawRectangleXYZ( float x, float y, float z, float lx, float ly, float lz, int color = kBlack, int border = -1 );
+#if 0
     void DrawSlicePixel( AliHLTTPCCATracker *slice, float step, bool DrawRows = 0, bool DrawGrid = 1 );
+#endif
     void DrawSliceLine1( float x1, float y1, float z1, float x2, float y2, float z2, int color = kBlue, float width = 1. );
     void DrawPointXYZl( float x, float y, float z, int color = kBlack, Size_t width = 1. );
 
@@ -235,7 +251,17 @@ class AliHLTTPCCADisplay
   };
   
   struct TDrawHit: public TDrawObject {
-    TDrawHit();
+    TDrawHit()
+    : x(NON)
+    , y(NON)
+    , z(NON)
+    , alpha(NON)
+    , gx(NON)
+    , gy(NON)
+    , gz(NON)
+    , slice(NON)
+    , row (NON)
+    {}
     bool CheckAlpha(); // check if alpha was set. true - was set, false - wasn't
     bool CheckLocal();
     bool CheckGlobal();
@@ -280,7 +306,7 @@ class AliHLTTPCCADisplay
     void DrawGlobalTpad2hit( int nhits0 );
     void DrawSlicesForTeta();
     void DrawFieldDzDsP();
-    void DrawDrawTetaTrackInt( float iTeta, int iSlice, int pSlice, int nSlice, bool ok = false, int color = kGreen );
+    void DrawDrawTetaTrackInt( float iTeta, int iSlice, bool ok = false, int color = kGreen );
     void DrawDrawTetaTrackIntMerged( float iTeta, float nTeta, float iSlice, float nSlice, bool ok = false, int color = kBlue );
     void DrawWrongMerge( float x0, float x1, float y0, float y1 );
     void DrawCorrectMerge( float x0, float x1, float y0, float y1, bool ok = false );
@@ -311,8 +337,10 @@ class AliHLTTPCCADisplay
   // ---
   void SpecDrawRecoTrackGlobalPT( int iTr, int color = kBlue, float width = 0.5 );
   void SpecDrawMCTrackGlobalPT( AliHLTTPCCAMCTrack& mcTrack, AliHLTResizableArray<AliHLTTPCCALocalMCPoint>* mcPointsArray, int color, float width );
+#if 0
   void SpecDrawMCTrackGlobalPT1( AliHLTTPCCAMCTrack& mcTrack, AliHLTResizableArray<AliHLTTPCCALocalMCPoint>* mcPointsArray, int color, float width );
   void SpecDrawMCTrackGlobalDzDsQPt( AliHLTTPCCAMCTrack& mcTrack, AliHLTResizableArray<AliHLTTPCCALocalMCPoint>* mcPointsArray, int color, float width );
+#endif
   void SaveCanvasToFilePT( TString fileName);
   // ---
  public:
