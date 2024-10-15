@@ -1009,6 +1009,7 @@ float_m AliHLTTPCCAMerger::FitTrack( AliHLTTPCCATrackParamVector &t, float_v &Al
 }
 #endif
 
+#if 0
 float_m AliHLTTPCCAMerger::FitTrackMerged( AliHLTTPCCATrackParamVector &t, float_v &Alpha0V,
                                       int hits[100][uint_v::SimdLen], uint_v &firstHits, uint_v &NTrackHits,
                                       int &nTracksV, float_m active0, bool dir )
@@ -1031,6 +1032,7 @@ float_m AliHLTTPCCAMerger::FitTrackMerged( AliHLTTPCCATrackParamVector &t, float
 
     // pack hits
 //  size_t arrSize = MaxNHits*float_v::SimdLen;	//TODO: use STL data structures
+//  constexpr int FixedSize = MaxNHits * float_v::SimdLen;
   float xVs[MaxNHits*float_v::SimdLen] __attribute__ ((aligned(float_v::SimdLen*4)));
   float yVs[MaxNHits*float_v::SimdLen] __attribute__ ((aligned(float_v::SimdLen*4)));
   float zVs[MaxNHits*float_v::SimdLen] __attribute__ ((aligned(float_v::SimdLen*4)));
@@ -1129,6 +1131,7 @@ float_m AliHLTTPCCAMerger::FitTrackMerged( AliHLTTPCCATrackParamVector &t, float
 
   return ok;
 }
+#endif
 
 void AliHLTTPCCAMerger::MakeBorderTracks( AliHLTTPCCABorderTrack B[], unsigned int &nB, unsigned char &iSlice)
 {
