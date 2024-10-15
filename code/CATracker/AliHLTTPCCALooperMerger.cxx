@@ -316,24 +316,32 @@ void AliHLTTPCCALooperMerger::SaveSegments()
       return ( a.z_h_dn < b.z_h_dn );
     }
   };
-  SortSegments segments[fSegments.size()];
+
+  SortSegments* segments = new SortSegments[fSegments.size()];
+
   for( unsigned int iSeg = 0; iSeg < fSegments.size(); iSeg++ ) {
     segments[iSeg].iLooper = fSegments[iSeg].iLooper;
     segments[iSeg].iTrack = fSegments[iSeg].iTr;
     segments[iSeg].z_h_dn = fSegments[iSeg].z_h_dn;
     segments[iSeg].iOrigSeg = iSeg;
-    if( fSegments[iSeg].z_h_dn < fSegments[iSeg].z_h_up ) segments[iSeg].grow = true;
-    else segments[iSeg].grow = false;
+    if( fSegments[iSeg].z_h_dn < fSegments[iSeg].z_h_up ) {
+      segments[iSeg].grow = true;
+    } else {
+      segments[iSeg].grow = false;
+    }
     segments[iSeg].revers = false;
   }
-  std::sort( &(segments[0]), &(segments[fSegments.size()-1]), SortSegments::comp );
+  std::sort(&(segments[0]), &(segments[fSegments.size() - 1]), SortSegments::comp);
+
   int tLooper = segments[0].iLooper;
   float tQPt = fSegments[segments[0].iOrigSeg].QPt_abs;
   int tNSeg = 1;
-  for( unsigned int iSeg = 0; iSeg < fSegments.size()-1; iSeg++ ) {
+  for( unsigned int iSeg = 0; iSeg < fSegments.size() - 1; iSeg++ ) {
     if( segments[iSeg].iLooper != tLooper ) {
-      if( tQPt > fSegments[segments[iSeg-1].iOrigSeg].QPt_abs ) {
-	for( unsigned int i = iSeg - tNSeg; i < iSeg; i++ ) segments[i].revers = true;
+      if( tQPt > fSegments[segments[iSeg - 1].iOrigSeg].QPt_abs ) {
+        for( unsigned int i = iSeg - tNSeg; i < iSeg; i++ ) {
+          segments[i].revers = true;
+        }
       }
       tLooper = segments[iSeg].iLooper;
       tQPt = fSegments[segments[iSeg].iOrigSeg].QPt_abs;
@@ -341,17 +349,20 @@ void AliHLTTPCCALooperMerger::SaveSegments()
     }
     tNSeg++;
   }
-  std::sort( &(segments[0]), &(segments[fSegments.size()-1]), SortSegments::comp );
+  std::sort(&(segments[0]), &(segments[fSegments.size() - 1]), SortSegments::comp);
+
   int iLooper = 0;
-  for( unsigned int iSeg = 1; iSeg < fSegments.size()-1; iSeg++ ) {
+  for( unsigned int iSeg = 1; iSeg < fSegments.size() - 1; iSeg++ ) {
     int prevTr = -1;
     iLooper = segments[iSeg].iLooper;
     while( segments[iSeg].iLooper == iLooper && iSeg < fSegments.size() ) {
       int nextTr = -1;
-      if( iSeg < fSegments.size()-1 ) if( segments[iSeg+1].iLooper == iLooper ) nextTr = segments[iSeg+1].iTrack;
-      AliHLTTPCCAMergedTrack &track = fOutput.Track( segments[iSeg].iTrack );
+      if( iSeg < fSegments.size() - 1 ) {
+	if( segments[iSeg + 1].iLooper == iLooper ) nextTr = segments[iSeg + 1].iTrack;
+      }
+      AliHLTTPCCAMergedTrack &track = fOutput.Track(segments[iSeg].iTrack);
       if( prevTr != nextTr ) {
-	track.SetLooper( prevTr, nextTr );
+	track.SetLooper(prevTr, nextTr);
 	if( segments[iSeg].grow ) track.SetGrow();
 	if( segments[iSeg].revers ) track.SetRevers();
       }
@@ -359,4 +370,5 @@ void AliHLTTPCCALooperMerger::SaveSegments()
       iSeg++;
     }
   }
+  delete[] segments;
 }
