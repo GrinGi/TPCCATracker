@@ -104,7 +104,7 @@ inline void AliHLTTPCCAGrid::GetBinBounded( const float_v &Y, const float_v &Z, 
 
   *bY = CAMath::Max( int_v( 0 ), static_cast<uint_v>( CAMath::Min( int_v( fNy - 1 ), yBin ) ) );
   *bZ = CAMath::Max( int_v( 0 ), static_cast<uint_v>( CAMath::Min( int_v( fNz - 1 ), zBin ) ) );
-//  for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {	//TODO: GK: check the correctness if working with int instead of uint
+//  for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {	//TODO: GK: check the correctness if working with int instead of uint
 //    (*bY)[i] = (int)(*bY)[i];
 //    (*bZ)[i] = (int)(*bZ)[i];
 //  }

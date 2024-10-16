@@ -54,13 +54,13 @@ void AliHLTTPCCANeighboursCleaner::run( const int numberOfRows, AliHLTTPCCASlice
     //   the link
     // - look at down link, if it's valid but the up link in the row below doesn't link to us remove
     //   the link
-    for ( int hitIndex = 0; hitIndex < numberOfHits; hitIndex += int_v::SimdLen ) {
-      const uint_v hitIndexes = uint_v::iota( 0 )/*( Vc::IndexesFromZero )*/ + hitIndex;
+    for ( int hitIndex = 0; hitIndex < numberOfHits; hitIndex += SimdSizeInt ) {
+      const uint_v hitIndexes = IndexesFromZeroInt/*( Vc::IndexesFromZero )*/ + hitIndex;
       int_m validHitsMask = hitIndexes < numberOfHits;
       assert( ( validHitsMask && ((hitIndexes   >= 0 ) && (hitIndexes   < row.NHits()   )) ) == validHitsMask );
 //      validHitsMask &= ( int_v(data.HitDataIsUsed( row ), hitIndexes, validHitsMask ) == int_v( Vc::Zero ) ); // not-used hits can be connected only with not-used, so only one check is needed
       int_v hitDataTemp;
-      for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+      for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
 	if( !validHitsMask[i] ) continue;
 	hitDataTemp.insert(i, data.HitDataIsUsed( row )[(unsigned int)hitIndexes[i]]);
 //	[i] = data.HitDataIsUsed( row )[(unsigned int)hitIndexes[i]];
@@ -70,7 +70,7 @@ void AliHLTTPCCANeighboursCleaner::run( const int numberOfRows, AliHLTTPCCASlice
         // up part
       assert( ( validHitsMask && ((hitIndexes   >= 0 ) && (hitIndexes   < row.NHits()   )) ) == validHitsMask );
       int_v up;
-      for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+      for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
 	if( !validHitsMask[i] ) continue;
 	up.insert(i, data.HitLinkUpData( row )[(unsigned int)hitIndexes[i]]);
 //	[i] = data.HitLinkUpData( row )[(unsigned int)hitIndexes[i]];
@@ -81,7 +81,7 @@ void AliHLTTPCCANeighboursCleaner::run( const int numberOfRows, AliHLTTPCCASlice
       int_m upMask = validHitsMask && up >= int_v( 0 );
       assert( ( upMask && ((upIndexes   >= 0 ) && (upIndexes   < rowUp.NHits()   )) ) == upMask );
       int_v downFromUp( 0 );
-      for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+      for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
 	if( !upMask[i] ) continue;
 	downFromUp.insert(i, data.HitLinkDownData( rowUp )[(unsigned int)upIndexes[i]]);
 //	[i] = data.HitLinkDownData( rowUp )[(unsigned int)upIndexes[i]];
@@ -89,7 +89,7 @@ void AliHLTTPCCANeighboursCleaner::run( const int numberOfRows, AliHLTTPCCASlice
 
         // down part
       int_v dn;
-      for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+      for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
       	if( !validHitsMask[i] ) continue;
       	dn.insert(i, data.HitLinkDownData( row )[(unsigned int)hitIndexes[i]]);
 //	[i] = data.HitLinkDownData( row )[(unsigned int)hitIndexes[i]];
@@ -101,7 +101,7 @@ void AliHLTTPCCANeighboursCleaner::run( const int numberOfRows, AliHLTTPCCASlice
       int_m dnMask = validHitsMask && dn >= int_v( 0 );
       assert( ( dnMask && ((downIndexes   >= 0 ) && (downIndexes   < rowDown.NHits()   )) ) == dnMask );
       int_v upFromDown( 0 );
-      for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+      for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
       	if( !dnMask[i] ) continue;
       	upFromDown.insert(i, data.HitLinkUpData( rowDown )[(unsigned int)downIndexes[i]]);
 //	[i] = data.HitLinkUpData( rowDown )[(unsigned int)downIndexes[i]];
@@ -110,7 +110,7 @@ void AliHLTTPCCANeighboursCleaner::run( const int numberOfRows, AliHLTTPCCASlice
 #ifdef V6	// Triplet saver
       if( it == 0 ) {
         int_m trs_mask( upMask && dnMask && int_m( up >= 0 && downFromUp < 0 ) && int_m( dn >= 0 && upFromDown < 0 ) );
-        for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+        for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
 	  if( !trs_mask[i] ) continue;
 	  save_up_links.push_back( hit_link( rowIndex-rowStep, dn[i], hitIndex+i ) );
 	  save_up_links.push_back( hit_link( rowIndex, hitIndex+i, up[i] ) );

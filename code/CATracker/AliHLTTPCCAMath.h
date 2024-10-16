@@ -94,28 +94,28 @@ namespace CAMath
   //TODO: implement SIMD versions of sin and cos in headers
   template<> inline float_v Sin ( const float_v &x ) {
     float_v res;
-    for( size_t i = 0; i < float_v::SimdLen; i++ ) {
+    for( size_t i = 0; i < SimdSizeFloat; i++ ) {
       res.insert(i, std::sin(x[i]));
     }
     return res;
   }
   template<> inline float_v Cos (const float_v &x) {
   float_v res;
-  for( size_t i = 0; i < float_v::SimdLen; i++ ) {
+  for( size_t i = 0; i < SimdSizeFloat; i++ ) {
     res.insert (i, std::cos (x[i]));
   }
   return res;
   }
   template<> inline float_v ATan2 (const float_v &y, const float_v &x) {
     float_v res;
-    for( size_t i = 0; i < float_v::SimdLen; i++ ) {
+    for( size_t i = 0; i < SimdSizeFloat; i++ ) {
       res.insert (i, std::atan2 (y[i], x[i]));
     }
     return res;
   }
   template<> inline float_v ASin (const float_v &x) {
     float_v res;
-    for( size_t i = 0; i < float_v::SimdLen; i++ ) {
+    for( size_t i = 0; i < SimdSizeFloat; i++ ) {
       res.insert (i, std::asin (x[i]));
     }
     return res;

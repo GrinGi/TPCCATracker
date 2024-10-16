@@ -71,7 +71,7 @@ AliHLTTPCCAHitArea::AliHLTTPCCAHitArea( const AliHLTTPCCARow &row, const AliHLTT
     fIh.gather( fSlice.FirstUnusedHitInBin( fRow ), fIndYmin, mask ); // first and
     fHitYlst.gather( fSlice.FirstUnusedHitInBin( fRow ), fIndYmin + fBDY, mask ); // last hit index in the bin
 #else
-    for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+    for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
       if( !mask[i] ) continue;
       fIh.insert( i, (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)fIndYmin[i]] );
 //      [i] = (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)fIndYmin[i]];
@@ -132,7 +132,7 @@ uint_m AliHLTTPCCAHitArea::GetNext( NeighbourData *data )
     fIh.gather( fSlice.FirstUnusedHitInBin( fRow ), fIndYmin, needNextZ ); // get first hit in cell, if z-line is new
     fHitYlst.gather( fSlice.FirstUnusedHitInBin( fRow ), fIndYmin + fBDY, needNextZ );
 #else
-    for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+    for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
       if( !needNextZ[i] ) continue;
       fIh.insert( i, (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)fIndYmin[i]] );
 //      [i] = (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)fIndYmin[i]];
@@ -180,7 +180,7 @@ uint_v AliHLTTPCCAHitArea::NHits()
     ih.gather( fSlice.FirstUnusedHitInBin( fRow ), indYmin, needNextZ ); // get first hit in cell, if z-line is new
     hitYlst.gather( fSlice.FirstUnusedHitInBin( fRow ), indYmin + fBDY, needNextZ );
 #else
-    for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+    for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
       if( !needNextZ[i] ) continue;
       ih.insert( i, (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)indYmin[i]] );
 //      [i] = (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)indYmin[i]];

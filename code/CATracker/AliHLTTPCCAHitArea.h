@@ -191,7 +191,7 @@ inline bool AliHLTTPCCAHitAreaScalar::GetNext( NeighbourData *data )
     nextZIndexOutOfRange = (fIz >= fBZmax);
     needNextZ = yIndexOutOfRange && !nextZIndexOutOfRange;
   }
-  uint_v indexes(uint_v::iota( 0 ));//(Vc::IndexesFromZero);
+  uint_v indexes(IndexesFromZeroInt);//(Vc::IndexesFromZero);
   indexes += fIh;
   if (data) {
     data->fValid = (uint_m)(indexes <= (uint_v)fHitYlst);

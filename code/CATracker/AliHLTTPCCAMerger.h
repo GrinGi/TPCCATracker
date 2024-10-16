@@ -128,7 +128,7 @@ class AliHLTTPCCAMerger
   void FindNeighbourTracks(int number=0);
   void Merging(int number=0);
   float_m AddNeighbour( const uint_v& jIndexes, const int& nVecElements, const float_m& isNeighbour,
-  int hits[2000][uint_v::SimdLen], uint_v& firstHit, AliHLTTPCCATrackParamVector& vStartPoint, AliHLTTPCCATrackParamVector& vEndPoint, float_v& vStartAlpha, float_v& vEndAlpha, uint_v& vNHits );
+  int hits[2000][SimdSizeInt], uint_v& firstHit, AliHLTTPCCATrackParamVector& vStartPoint, AliHLTTPCCATrackParamVector& vEndPoint, float_v& vStartAlpha, float_v& vEndAlpha, uint_v& vNHits );
 
   void MergingFix(int number=0);
 
@@ -138,7 +138,7 @@ class AliHLTTPCCAMerger
   void ClearMemoryPT();
   void MergeUpPT( int s );
   void MergingPT( int number );
-  bool AddNeighbourPTSimple( int_v iTr, int_v jTr, int hits[2000][uint_v::SimdLen], uint_v& vNHits );
+  bool AddNeighbourPTSimple( int_v iTr, int_v jTr, int hits[2000][SimdSizeInt], uint_v& vNHits );
   void MergingPTmultimap();
   // ---
 #endif
@@ -155,16 +155,16 @@ class AliHLTTPCCAMerger
   float_v &minL2v, const float &bestChi2, float_v& min_chi2, float_m& active );
 
     // helping functions
-  void ConvertPTrackParamToVector( const AliHLTTPCCATrackParam *t0[uint_v::SimdLen], AliHLTTPCCATrackParamVector &t, const int &nTracksV);
-  void ConvertPTrackParamToVectorSimple( const AliHLTTPCCATrackParam *t0[uint_v::SimdLen], AliHLTTPCCATrackParamVector &t, const int &nTracksV);
+  void ConvertPTrackParamToVector( const AliHLTTPCCATrackParam *t0[SimdSizeInt], AliHLTTPCCATrackParamVector &t, const int &nTracksV);
+  void ConvertPTrackParamToVectorSimple( const AliHLTTPCCATrackParam *t0[SimdSizeInt], AliHLTTPCCATrackParamVector &t, const int &nTracksV);
 
-  void ConvertPTrackParamToVectorAdd( AliHLTTPCCATrackParam *t0[uint_v::SimdLen], AliHLTTPCCATrackParamVector &t, const int &nTracksV, float_m mask);
+  void ConvertPTrackParamToVectorAdd( AliHLTTPCCATrackParam *t0[SimdSizeInt], AliHLTTPCCATrackParamVector &t, const int &nTracksV, float_m mask);
 
   float_m FitTrack( AliHLTTPCCATrackParamVector &t, float_v &Alpha0V,
-                     int hits[2000][uint_v::SimdLen], uint_v &firstHits, uint_v &NTrackHits,
+                     int hits[2000][SimdSizeInt], uint_v &firstHits, uint_v &NTrackHits,
                      int &nTracksV, float_m active0 = float_m(true), bool dir = 1 );
   float_m FitTrackMerged( AliHLTTPCCATrackParamVector &t, float_v &Alpha0V,
-                         int hits[100][uint_v::SimdLen], uint_v &firstHits, uint_v &NTrackHits,
+                         int hits[100][SimdSizeInt], uint_v &firstHits, uint_v &NTrackHits,
                          int &nTracksV, float_m active0 = float_m(true), bool dir = 1 );
 
   unsigned int HitIndex( const uint_v& firstHits, const uint_v& nHits, bool dir, int iV, unsigned int i ) { // vectorized is slower
@@ -423,7 +423,7 @@ class AliHLTTPCCAMerger::AliHLTTPCCASliceTrackInfo
 
 //#include "AliHLTTPCCATrackParamVector.h"
 
-inline void AliHLTTPCCAMerger::ConvertPTrackParamToVector( const AliHLTTPCCATrackParam *t0[uint_v::SimdLen], AliHLTTPCCATrackParamVector &t, const int &nTracksV)
+inline void AliHLTTPCCAMerger::ConvertPTrackParamToVector( const AliHLTTPCCATrackParam *t0[SimdSizeInt], AliHLTTPCCATrackParamVector &t, const int &nTracksV)
 {
   float_v tmpFloat( 0.f );
   int_v tmpShort( 0 );
@@ -449,7 +449,7 @@ inline void AliHLTTPCCAMerger::ConvertPTrackParamToVector( const AliHLTTPCCATrac
   t.SetNDF(tmpShort);
 }
 
-inline void AliHLTTPCCAMerger::ConvertPTrackParamToVectorAdd( AliHLTTPCCATrackParam *t0[uint_v::SimdLen], AliHLTTPCCATrackParamVector &t, const int &nTracksV, float_m mask)
+inline void AliHLTTPCCAMerger::ConvertPTrackParamToVectorAdd( AliHLTTPCCATrackParam *t0[SimdSizeInt], AliHLTTPCCATrackParamVector &t, const int &nTracksV, float_m mask)
 {
   float_v tmpFloat;
   int_v tmpShort;
@@ -493,7 +493,7 @@ inline void AliHLTTPCCAMerger::ConvertPTrackParamToVectorAdd( AliHLTTPCCATrackPa
   t.SetNDF(tmpShort);
 }
 
-inline void AliHLTTPCCAMerger::ConvertPTrackParamToVectorSimple( const AliHLTTPCCATrackParam *t0[uint_v::SimdLen], AliHLTTPCCATrackParamVector &t, const int &nTracksV)
+inline void AliHLTTPCCAMerger::ConvertPTrackParamToVectorSimple( const AliHLTTPCCATrackParam *t0[SimdSizeInt], AliHLTTPCCATrackParamVector &t, const int &nTracksV)
 {
   float_v tmpFloat;
   int_v tmpShort;

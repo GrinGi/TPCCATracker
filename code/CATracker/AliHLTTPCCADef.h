@@ -106,6 +106,10 @@ typedef float_v uint_v;
 typedef float_m int_m;
 typedef float_m uint_m;
 #endif
+#define SimdSizeFloat float_v::Size
+#define SimdSizeInt int_v::Size
+#define IndexesFromZeroInt Vc::IndexesFromZero()
+#define IndexesFromZeroFloat Vc::IndexesFromZero()
 
 #else
 /*
@@ -122,6 +126,10 @@ using float_m = KFP::SIMD::simd_mask;
 using int_m   = KFP::SIMD::simd_mask;
 using uint_m  = KFP::SIMD::simd_mask;
 #define SimdVectorAlignment float_v::SimdSize
+#define SimdSizeFloat float_v::SimdLen
+#define SimdSizeInt int_v::SimdLen
+#define IndexesFromZeroInt int_v::iota( 0 )
+#define IndexesFromZeroFloat float_v::iota( 0 )
 
 template <typename SIMDType, typename ScalType, typename Func>
 void callWithValuesSorted(SIMDType vec, Func func)
@@ -131,7 +139,7 @@ void callWithValuesSorted(SIMDType vec, Func func)
     values[i] = vec[i];
   }
   std::sort(values.begin(), values.end());
-  size_t prev = -1;
+  int prev = -1;
   for( unsigned int i = 0; i < SIMDType::SimdLen; i++ ) {
     if( values[i] == prev ) continue;
     func(values[i]);

@@ -73,7 +73,7 @@ class AliHLTTPCCAParam
 
     int ISlice() const { return fISlice;}
     int NRows() const { return fNRows; }
-    int NRows8() const { return fNRows + float_v::SimdLen - (fNRows-1)%float_v::SimdLen - 1;} // NRows8 % float_v::Size == 0 && NRows + float_v::Size > NRows8 >= NRows
+    int NRows8() const { return fNRows + SimdSizeFloat - (fNRows-1)%SimdSizeFloat - 1;} // NRows8 % float_v::Size == 0 && NRows + float_v::Size > NRows8 >= NRows
 //
     int NInnerRows() const { return fNInnerRows; }
     int NTpcRows()   const { return fNTpcRows; }
@@ -283,7 +283,7 @@ inline void AliHLTTPCCAParam::GetClusterErrors2( uint_v rowIndexes, const TrackP
   const float *c = &fParamS0Par[0][0][0];
   const float_v errmin = 1e-6f;
   float_v v, v1, v2, v4, v5;
-  for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+  for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
     const float *c_temp = &c[(unsigned int)type[i]];
     v.insert(i, c_temp[0]);//[ i]  = c_temp[0];
     v1.insert(i, c_temp[1]);//[i] = c_temp[1];
@@ -302,7 +302,7 @@ inline void AliHLTTPCCAParam::GetClusterErrors2( uint_v rowIndexes, const TrackP
 #ifdef VC_GATHER_SCATTER
   v.gather( c+3, type );
 #else
-  for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+  for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
       v.insert(i, c[(unsigned int)type[i] + 3]);//[i] = c[(unsigned int)type[i] + 3];
   }
 #endif

@@ -73,7 +73,7 @@ class AliHLTTPCCATracklet
     void ClearRowHits() {
       std::cout<<"!WARNING: unused function, should be deleted\n";
       const int_v zero( 0 );
-      STATIC_ASSERT( AliHLTTPCCAParameters::MaxNumberOfRows8 % int_v::SimdLen == 0, Size_of_fRowHits_array_needs_to_be_a_multiple_of_int_v__Size );
+      STATIC_ASSERT( AliHLTTPCCAParameters::MaxNumberOfRows8 % SimdSizeInt == 0, Size_of_fRowHits_array_needs_to_be_a_multiple_of_int_v__Size );
     }
 
   private:

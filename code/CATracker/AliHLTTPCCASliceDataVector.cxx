@@ -276,8 +276,8 @@ void AliHLTTPCCASliceData::ClearHitWeights()
 {
   const uint_v v0( 0 );
   const unsigned int *const end = fRows[fParam->NRows()].fHitWeights;
-  for ( unsigned int *mem = fRows[0].fHitWeights; mem < end; mem += uint_v::SimdLen/*v0.Size*/ ) {
-    for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+  for ( unsigned int *mem = fRows[0].fHitWeights; mem < end; mem += SimdSizeInt/*v0.Size*/ ) {
+    for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
       mem[i] = v0[i];
     }
   }
@@ -287,14 +287,14 @@ void AliHLTTPCCASliceData::ClearLinks()
 {
   const int_v v0( -1 );
   const int *const end1 = fRows[fParam->NRows()].fLinkUpData;
-  for ( int *mem = fRows[0].fLinkUpData; mem < end1; mem += int_v::SimdLen/*v0.Size*/ ) {
-    for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+  for ( int *mem = fRows[0].fLinkUpData; mem < end1; mem += SimdSizeInt/*v0.Size*/ ) {
+    for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
       mem[i] = v0[i];
     }
   }
   const int *const end2 = fRows[fParam->NRows()].fLinkDownData;
-  for ( int *mem = fRows[0].fLinkDownData; mem < end2; mem += int_v::SimdLen/*v0.Size*/ ) {
-    for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+  for ( int *mem = fRows[0].fLinkDownData; mem < end2; mem += SimdSizeInt/*v0.Size*/ ) {
+    for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
       mem[i] = v0[i];
     }
   }

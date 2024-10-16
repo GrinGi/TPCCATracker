@@ -67,11 +67,11 @@ void AliHLTTPCCAStartHitsFinder::run( AliHLTTPCCATracker &tracker, SliceData &da
 
     // look through all the hits and look for
     const int numberOfHits = row.NHits();
-    for ( int hitIndex = 0; hitIndex < numberOfHits; hitIndex += int_v::SimdLen ) {
-      const int_v hitIndexes = int_v::iota( 0 )/*( Vc::IndexesFromZero )*/ + hitIndex;
+    for ( int hitIndex = 0; hitIndex < numberOfHits; hitIndex += SimdSizeInt ) {
+      const int_v hitIndexes = IndexesFromZeroInt/*( Vc::IndexesFromZero )*/ + hitIndex;
       int_m validHitsMask = hitIndexes < numberOfHits;
       int_v hitDataTemp;
-      for( unsigned int ii = 0; ii < float_v::SimdLen; ii++ ) {
+      for( unsigned int ii = 0; ii < SimdSizeFloat; ii++ ) {
 //      	hitDataTemp[ii] = data.HitDataIsUsed( row )[(unsigned int)hitIndexes[ii]];
 	hitDataTemp.insert(ii, data.HitDataIsUsed( row )[(size_t)hitIndexes[ii]]);
       }
@@ -87,7 +87,7 @@ void AliHLTTPCCAStartHitsFinder::run( AliHLTTPCCATracker &tracker, SliceData &da
         int nRows = 2;
         int_v upperHitIndexes = middleHitIndexes;
         for (;!validHitsMask.isEmpty() && nRows < AliHLTTPCCAParameters::NeighboursChainMinLength[iter];) {
-          for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+          for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
             if( !validHitsMask[i] ) continue;
 //            upperHitIndexes[i] = data.HitLinkUpData( data.Row( iRow ) )[(unsigned int)upperHitIndexes[i]];
             upperHitIndexes.insert(i, data.HitLinkUpData( data.Row( iRow ))[(size_t)upperHitIndexes[i]]);
@@ -112,7 +112,7 @@ void AliHLTTPCCAStartHitsFinder::run( AliHLTTPCCATracker &tracker, SliceData &da
             curRow2 = data.Row( iRow2 );
 
             data.SetHitAsUsed( curRow2, static_cast<uint_v>( upperHitIndexes2 ), goodChains );
-            for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+            for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
               if( !goodChains[i] ) continue;
               upperHitIndexes2.insert(i, data.HitLinkUpData( curRow2 )[(unsigned int)upperHitIndexes2[i]]);//[i] = data.HitLinkUpData( curRow2 )[(unsigned int)upperHitIndexes2[i]];
             }
@@ -123,7 +123,7 @@ void AliHLTTPCCAStartHitsFinder::run( AliHLTTPCCATracker &tracker, SliceData &da
             iRow2 += rowStep;
           }
 
-          for( unsigned int i = 0; i < int_v::SimdLen; i++ ) {
+          for( unsigned int i = 0; i < SimdSizeInt; i++ ) {
             if(!validHitsMask[i]) continue;
             startHits[hitsStartOffset + startHitsCount++].Set( rowIndex, hitIndex + i, nHits[i] );
 //std::cout<<" - start hit: "<<rowIndex<<", "<<hitIndex + i<<", "<<nHits[i]<<"\n";

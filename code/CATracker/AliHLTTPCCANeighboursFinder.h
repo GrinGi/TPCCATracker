@@ -153,16 +153,16 @@ inline void AliHLTTPCCATracker::NeighboursFinder::executeOnRow( int rowIndex ) c
     // #ifdef DRAW
     // #define DRAW_NEIGHBOURSFINDING
     // #endif
-  
+
 //  STATIC_ASSERT( int_v::Size % float_v::Size == 0, Short_Vector_Size_is_not_a_multiple_of_Float_Vector_Size );
-  for ( unsigned int hitIndex = 0; hitIndex < numberOfHits; hitIndex += int_v::SimdLen ) {
+  for ( unsigned int hitIndex = 0; hitIndex < numberOfHits; hitIndex += SimdSizeInt ) {
 
 #ifdef DRAW_NEIGHBOURSFINDING
     float_v neighUpY[kMaxN];
     float_v neighUpZ[kMaxN];
 #endif      
 
-    uint_v hitIndexes( uint_v::iota( 0 )/*(Vc::IndexesFromZero)*/ + hitIndex );
+    uint_v hitIndexes( IndexesFromZeroInt/*(Vc::IndexesFromZero)*/ + hitIndex );
     const int_m &validHitsMask = hitIndexes < numberOfHits;
     
       // WARNING: there is very similar code above.

@@ -70,7 +70,7 @@ class AliHLTTPCCATrackletVector
     uint_v fLastRow;    // last TPC row
     TrackParamVector fParam;   // tracklet parameters
 //    Vc::array< Vc::array<unsigned int, uint_v::Size>, AliHLTTPCCAParameters::MaxNumberOfRows8 > fRowHits; // hit index for each TPC row
-    std::array< std::array<int, uint_v::SimdLen>, AliHLTTPCCAParameters::MaxNumberOfRows8 > fRowHits; // hit index for each TPC row	//TODO: check performance
+    std::array< std::array<int, SimdSizeInt>, AliHLTTPCCAParameters::MaxNumberOfRows8 > fRowHits; // hit index for each TPC row	//TODO: check performance
 };
 
 inline void AliHLTTPCCATrackletVector::SetParam( const TrackParamVector &x, float_m mask )
@@ -87,12 +87,12 @@ inline void AliHLTTPCCATrackletVector::SetRowHits( int rowIndex, const uint_v &t
     const uint_v &hitIndex )
 {
 //  assert( (trackIndex[0] + uint_v( Vc::IndexesFromZero ) == trackIndex).isFull() );
-  assert( uint_m(( trackIndex[0] % uint_v::SimdLen ) == 0).isFull() );
+  assert( uint_m(( trackIndex[0] % SimdSizeInt ) == 0).isFull() );
   UNUSED_PARAM1( trackIndex );
   VALGRIND_CHECK_VALUE_IS_DEFINED( hitIndex );
   VALGRIND_CHECK_MEM_IS_DEFINED( &fRowHits[rowIndex], sizeof( uint_v ) );
 //  hitIndex.store( &fRowHits[rowIndex][0] );
-  for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+  for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
     fRowHits[rowIndex][i] = hitIndex[i];
   }
 //  VALGRIND_CHECK_MEM_IS_DEFINED( &fRowHits[rowIndex], sizeof( uint_v ) );
@@ -116,7 +116,7 @@ inline void AliHLTTPCCATrackletVector::SetRowHits( int rowIndex, const uint_v &t
   VALGRIND_CHECK_VALUE_IS_DEFINED( hitIndex );
   VALGRIND_CHECK_VALUE_IS_DEFINED( mask );
 //  assert( (trackIndex[0] + uint_v( Vc::IndexesFromZero ) == trackIndex).isFull() );
-  assert( uint_m(( trackIndex[0] % uint_v::SimdLen ) == 0).isFull() );
+  assert( uint_m(( trackIndex[0] % SimdSizeInt ) == 0).isFull() );
   UNUSED_PARAM1( trackIndex );
   assert( &fRowHits[0] != 0 );
   VALGRIND_CHECK_MEM_IS_DEFINED( &fRowHits[rowIndex], sizeof( uint_v ) );
@@ -124,7 +124,7 @@ inline void AliHLTTPCCATrackletVector::SetRowHits( int rowIndex, const uint_v &t
 //   debugF() << uint_v( fRowHits[rowIndex] );
 //   debugF() << " new: " << hitIndex << mask;
   if( mask.isEmpty() ) return;
-  for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+  for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
     if( !mask[i] ) continue;
     fRowHits[rowIndex][i] = hitIndex[i];
   }

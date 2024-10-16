@@ -84,7 +84,7 @@ class AliHLTTPCCATracker
     void GetErrors2( int iRow,  const AliHLTTPCCATrackParamVector &t, float_v *Err2Y, float_v *Err2Z ) const;
     void GetErrors2( const uint_v &rowIndexes, const AliHLTTPCCATrackParamVector &t, float_v *Err2Y, float_v *Err2Z ) const;
 
-    void RecalculateHitsSize( int MaxNHits );
+//    void RecalculateHitsSize( int MaxNHits );
     void SetPointersHits( int MaxNHits );
     void RecalculateTrackMemorySize( int MaxNTracks, int MaxNHits );
     void SetPointersTracks( int MaxNTracks, int MaxNHits );

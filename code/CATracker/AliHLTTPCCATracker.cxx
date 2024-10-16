@@ -110,11 +110,11 @@ void  AliHLTTPCCATracker::SetupCommonMemory()
   fNTracklets = 0;
 }
 
-void AliHLTTPCCATracker::RecalculateHitsSize( int MaxNHits )
-{
+//void AliHLTTPCCATracker::RecalculateHitsSize( int MaxNHits )
+//{
 //   fHitMemorySize = 0;
 //   fHitMemorySize += RequiredMemory( fTrackletStartHits, MaxNHits );
-}
+//}
 
 void  AliHLTTPCCATracker::SetPointersHits( int MaxNHits )
 {
@@ -167,7 +167,7 @@ void AliHLTTPCCATracker::ReadEvent( AliHLTTPCCAClusterData *clusterData )
   //* Convert input hits, create grids, etc.
   fData.InitFromClusterData( *clusterData );
   {
-    RecalculateHitsSize( fData.NumberOfHits() ); // to calculate the size
+//    RecalculateHitsSize( fData.NumberOfHits() ); // to calculate the size
 //     fHitMemory = new char[fHitMemorySize + 1600];
     SetPointersHits( fData.NumberOfHits() ); // set pointers for hits
     fNTracklets = 0;

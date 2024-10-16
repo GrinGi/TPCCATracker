@@ -671,9 +671,9 @@ float_m AliHLTTPCCATrackParamVector::FilterWithMaterial( const float_v &y, const
 
 std::istream &operator>>( std::istream &in, AliHLTTPCCATrackParamVector &t )
 {
-  std::array<float, float_v::SimdLen> x, s, p[5], c[15], chi2;
-  std::array<int, int_v::SimdLen> ndf;
-  for ( unsigned int j = 0; j < uint_v::SimdLen; ++j ) {
+  std::array<float, SimdSizeFloat> x, s, p[5], c[15], chi2;
+  std::array<int, SimdSizeInt> ndf;
+  for ( unsigned int j = 0; j < SimdSizeInt; ++j ) {
     in >> x[j];
     in >> s[j];
     for ( int i = 0; i < 5; i++ ) in >> p[i][j];
@@ -717,7 +717,7 @@ std::ostream &operator<<( std::ostream &out, const AliHLTTPCCATrackParamVector &
 //     out << std::setprecision( 6 );
 //     return out << std::endl;
 //   }
-  for ( unsigned int j = 0; j < uint_v::SimdLen; ++j ) {
+  for ( unsigned int j = 0; j < SimdSizeInt; ++j ) {
     out << t.X()[j] << " "
         << t.SignCosPhi()[j] << " "
         << t.Chi2()[j] << " "

@@ -261,8 +261,8 @@ void AliHLTTPCCAMerger::UnpackSlicesPT()
     if ( !fkSlices[iSlice] ) continue;
     nTracksTotal += fkSlices[iSlice]->NTracks();
     trArraySize += fkSlices[iSlice]->NTracks();
-    if( fkSlices[iSlice]->NTracks()%float_v::SimdLen != 0 ) {
-      trArraySize += float_v::SimdLen - fkSlices[iSlice]->NTracks()%float_v::SimdLen;
+    if( fkSlices[iSlice]->NTracks()%SimdSizeFloat != 0 ) {
+      trArraySize += SimdSizeFloat - fkSlices[iSlice]->NTracks()%SimdSizeFloat;
     }
     nTrackClustersTotal += fkSlices[iSlice]->NTrackClusters();
   }
@@ -291,12 +291,12 @@ void AliHLTTPCCAMerger::UnpackSlicesPT()
         fptSliceFirstHit[iSlice] = nClustersCurrent;
         const AliHLTTPCCASliceOutput &slice = *( fkSlices[iSlice] );
 
-        for ( int itr = 0; itr < slice.NTracks(); itr += uint_v::SimdLen ) {
-          int nTracksVector = uint_v::SimdLen;
-          if(slice.NTracks() - itr < uint_v::SimdLen )
+        for ( int itr = 0; itr < slice.NTracks(); itr += SimdSizeInt ) {
+          int nTracksVector = SimdSizeInt;
+          if(slice.NTracks() - itr < SimdSizeInt )
             nTracksVector = slice.NTracks() - itr;
           unsigned int nCluNew = 0;
-          const AliHLTTPCCASliceTrackVector &sTrackV = slice.TrackV( itr / float_v::SimdLen );
+          const AliHLTTPCCASliceTrackVector &sTrackV = slice.TrackV( itr / SimdSizeFloat );
           for(int iV=0; iV < nTracksVector; iV++) {
               if( !sTrackV.Active()[iV] ) continue;
             int nHits(0);
@@ -323,17 +323,17 @@ void AliHLTTPCCAMerger::UnpackSlicesPT()
         }
   }
   // ---
-  vInnerX = (float*) _mm_malloc(sizeof(float)*(trArraySize), float_v::SimdLen*4);
-  vOuterX = (float*) _mm_malloc(sizeof(float)*(trArraySize), float_v::SimdLen*4);
-  vInnerY = (float*) _mm_malloc(sizeof(float)*(trArraySize), float_v::SimdLen*4);
-  vOuterY = (float*) _mm_malloc(sizeof(float)*(trArraySize), float_v::SimdLen*4);
-  vInnerZ = (float*) _mm_malloc(sizeof(float)*(trArraySize), float_v::SimdLen*4);
-  vOuterZ = (float*) _mm_malloc(sizeof(float)*(trArraySize), float_v::SimdLen*4);
-  vTeta = (float*) _mm_malloc(sizeof(float)*(trArraySize), float_v::SimdLen*4);
-//  vAngle = (float*) _mm_malloc(sizeof(float)*(trArraySize), float_v::SimdLen*4);
-  vTrackID = (int*) _mm_malloc(sizeof(int)*(trArraySize), float_v::SimdLen*4);
-//  vFirstRow = (int*) _mm_malloc(sizeof(int)*(trArraySize), float_v::SimdLen*4);
-  vLastRow = (int*) _mm_malloc(sizeof(int)*(trArraySize), float_v::SimdLen*4);
+  vInnerX = (float*) _mm_malloc(sizeof(float)*(trArraySize), SimdSizeFloat*4);
+  vOuterX = (float*) _mm_malloc(sizeof(float)*(trArraySize), SimdSizeFloat*4);
+  vInnerY = (float*) _mm_malloc(sizeof(float)*(trArraySize), SimdSizeFloat*4);
+  vOuterY = (float*) _mm_malloc(sizeof(float)*(trArraySize), SimdSizeFloat*4);
+  vInnerZ = (float*) _mm_malloc(sizeof(float)*(trArraySize), SimdSizeFloat*4);
+  vOuterZ = (float*) _mm_malloc(sizeof(float)*(trArraySize), SimdSizeFloat*4);
+  vTeta = (float*) _mm_malloc(sizeof(float)*(trArraySize), SimdSizeFloat*4);
+//  vAngle = (float*) _mm_malloc(sizeof(float)*(trArraySize), SimdSizeFloat*4);
+  vTrackID = (int*) _mm_malloc(sizeof(int)*(trArraySize), SimdSizeFloat*4);
+//  vFirstRow = (int*) _mm_malloc(sizeof(int)*(trArraySize), SimdSizeFloat*4);
+  vLastRow = (int*) _mm_malloc(sizeof(int)*(trArraySize), SimdSizeFloat*4);
   fTrackLinks.get_allocator().allocate(nTracksTotal*2);
   sliceTrackId = (HitInfo*) _mm_malloc(sizeof(HitInfo)*(trArraySize), sizeof(HitInfo));
   sMaxGape = 5;
@@ -350,8 +350,8 @@ void AliHLTTPCCAMerger::UnpackSlicesPT()
       for( int iTr = 0; iTr < slice.NTracks(); iTr++ ) {
 	if( iTr > nTracksTotal ) break;
         // ---
-        unsigned int iv = iTr/float_v::SimdLen;
-        unsigned int it = iTr%float_v::SimdLen;
+        unsigned int iv = iTr/SimdSizeFloat;
+        unsigned int it = iTr%SimdSizeFloat;
         const AliHLTTPCCASliceTrackVector &sTrackV = slice.TrackV( iv );
         int ncl((int)(sTrackV.NClusters()[it])), fstcl((int)(sTrackV.FirstClusterRef()[it]));
 
@@ -392,7 +392,7 @@ void AliHLTTPCCAMerger::UnpackSlicesPT()
       vLastRow[i] = 0;
   }
   fptSliceFirstTrack[fgkNSlices] = trackCounter;
-  for( int iTv = 0; iTv < storedTracks; iTv += float_v::SimdLen ) {
+  for( int iTv = 0; iTv < storedTracks; iTv += SimdSizeFloat ) {
       float_v& vX0 = reinterpret_cast<float_v&>(vInnerX[iTv]);
       float_v& vX1 = reinterpret_cast<float_v&>(vOuterX[iTv]);
       float_v& vZ0 = reinterpret_cast<float_v&>(vInnerZ[iTv]);
@@ -430,10 +430,10 @@ void AliHLTTPCCAMerger::MergeUpPT( int s )
   int trackOffset(0);
   int dir(1);
   int gape(8);
-  float *nTs = (float*) _mm_malloc(sizeof(float_v), float_v::SimdLen*4);
-  float *nXIs = (float*) _mm_malloc(sizeof(float_v), float_v::SimdLen*4);
-  float *nYIs = (float*) _mm_malloc(sizeof(float_v), float_v::SimdLen*4);
-  float *nZIs = (float*) _mm_malloc(sizeof(float_v), float_v::SimdLen*4);
+  float *nTs = (float*) _mm_malloc(sizeof(float_v), SimdSizeFloat*4);
+  float *nXIs = (float*) _mm_malloc(sizeof(float_v), SimdSizeFloat*4);
+  float *nYIs = (float*) _mm_malloc(sizeof(float_v), SimdSizeFloat*4);
+  float *nZIs = (float*) _mm_malloc(sizeof(float_v), SimdSizeFloat*4);
   for( int iSlice = 0; iSlice < fgkNSlices; iSlice++ ) {
     if ( !fkSlices[iSlice] ) continue;
     int pSlice(iSlice), nSlice(iSlice);
@@ -460,8 +460,8 @@ void AliHLTTPCCAMerger::MergeUpPT( int s )
     }
     if ( !fkSlices[pSlice] ) continue;
     int endTrack = fkSlices[iSlice]->NTracks() + trackOffset;
-    int startTrack = trackOffset%float_v::SimdLen == 0 ? trackOffset : trackOffset - trackOffset%float_v::SimdLen;
-    for( int iTr = startTrack; iTr < endTrack; iTr += float_v::SimdLen ) {
+    int startTrack = trackOffset%SimdSizeFloat == 0 ? trackOffset : trackOffset - trackOffset%SimdSizeFloat;
+    for( int iTr = startTrack; iTr < endTrack; iTr += SimdSizeFloat ) {
       float_m active( (uint_v(iTr) + uint_v( Vc::IndexesFromZero )) < endTrack );
       active &= float_m( (uint_v(iTr) + uint_v( Vc::IndexesFromZero )) >= trackOffset );
       float_v &thisXOut = reinterpret_cast<float_v&>(vOuterX[iTr]);
@@ -471,7 +471,7 @@ void AliHLTTPCCAMerger::MergeUpPT( int s )
 //	int_v &thisRow = reinterpret_cast<int_v&>(vLastRow[iTr]);
       float_v &thisTeta = reinterpret_cast<float_v&>(vTeta[iTr]);
       float_v firstTrackV(-1.f), lastTrackV(-1.f);
-      for( int iV = 0; iV < int_v::SimdLen; iV++ ) {			//TODO: try to vectorize
+      for( int iV = 0; iV < SimdSizeInt; iV++ ) {			//TODO: try to vectorize
 	int thisRow = vLastRow[iTr+iV];
 	if( !active[iV] /*|| thisRow > 41*/ ) continue;
 	int fstn = 0;
@@ -512,8 +512,8 @@ void AliHLTTPCCAMerger::MergeUpPT( int s )
 	float_v &nextXIn = reinterpret_cast<float_v&>(nXIs[0]);
 	float_v &nextYIn = reinterpret_cast<float_v&>(nYIs[0]);
 	float_v &nextZIn = reinterpret_cast<float_v&>(nZIs[0]);
-	int tTr[float_v::SimdLen];
-	for( int iV = 0; iV < float_v::SimdLen; iV++ ) {
+	int tTr[SimdSizeFloat];
+	for( int iV = 0; iV < SimdSizeFloat; iV++ ) {
 	  if( !combo[iV] ) {
 	    nTs[iV] = -1;
 	    nXIs[iV] = -1;
@@ -554,17 +554,17 @@ void AliHLTTPCCAMerger::MergeUpPT( int s )
 	  combo &= mask;
 	}
 	if( combo.isEmpty() ) continue;
-	for( int t = 0; t < float_v::SimdLen; t++ ) {
+	for( int t = 0; t < SimdSizeFloat; t++ ) {
 	  if( !combo[t] ) continue;
 	  int iMerge = vTrackID[iTr+t];
 	  int jMerge = vTrackID[tTr[t]];
 
 	  int iMergeVs = sliceTrackId[iTr+t].id;
 	  int jMergeVs = sliceTrackId[tTr[t]].id;
-	  int iMergeVv = iMergeVs / float_v::SimdLen;
-	  int iMergeVi = iMergeVs % float_v::SimdLen;
-	  int jMergeVv = jMergeVs / float_v::SimdLen;
-	  int jMergeVi = jMergeVs % float_v::SimdLen;
+	  int iMergeVv = iMergeVs / SimdSizeFloat;
+	  int iMergeVi = iMergeVs % SimdSizeFloat;
+	  int jMergeVv = jMergeVs / SimdSizeFloat;
+	  int jMergeVi = jMergeVs % SimdSizeFloat;
 
 	  if( s == 1 || s == 0 ) {
 	    if( ((fabs(thisZIn[t]) < fabs(thisZOut[t])) && (fabs(thisZOut[t]) > fabs(nextZIn[t]))) || ((fabs(thisZIn[t]) > fabs(thisZOut[t])) && (fabs(thisZOut[t]) < fabs(nextZIn[t]))) )
@@ -641,18 +641,18 @@ void AliHLTTPCCAMerger::UnpackSlices()
 
     const AliHLTTPCCASliceOutput &slice = *( fkSlices[iSlice] );
 
-    for ( int itr = 0; itr < slice.NTracks(); itr += uint_v::SimdLen ) {
+    for ( int itr = 0; itr < slice.NTracks(); itr += SimdSizeInt ) {
 
-      int nTracksVector = uint_v::SimdLen;
-      if(slice.NTracks() - itr < int(uint_v::SimdLen) )
+      int nTracksVector = SimdSizeInt;
+      if(slice.NTracks() - itr < int(SimdSizeInt) )
         nTracksVector = slice.NTracks() - itr;
 
       float_v startAlpha( 0.f );
       float_v endAlpha( 0.f );
 
-      int hits[1000][uint_v::SimdLen];
+      int hits[1000][SimdSizeInt];
       uint_v nHits;
-      const AliHLTTPCCATrackParam *pStartPoint[uint_v::SimdLen] = {0};
+      const AliHLTTPCCATrackParam *pStartPoint[SimdSizeInt] = {0};
 
       unsigned int nCluNew = 0;
 
@@ -700,7 +700,7 @@ void AliHLTTPCCAMerger::UnpackSlices()
       }
       fitted &= FitTrack( endPoint, endAlpha, startPoint, startAlpha, hits, nHits, nHits, nTracksVector, 0 );
 #else
-      fitted &= static_cast<float_m>( uint_v::iota( 0 )/*( Vc::IndexesFromZero )*/ < nTracksVector );
+      fitted &= static_cast<float_m>( IndexesFromZeroInt/*( Vc::IndexesFromZero )*/ < nTracksVector );
 
         // start from startPoint
       AliHLTTPCCATrackParamVector vEndPoint;
@@ -720,7 +720,7 @@ void AliHLTTPCCAMerger::UnpackSlices()
         // if chi2 per degree of freedom > 3. sigma - mark track with 0
       fitted &= vStartPoint.Chi2() < 9.f*static_cast<float_v>(vStartPoint.NDF());
 #endif
-      for( unsigned int iV=0; iV<float_v::SimdLen; iV++ ) {
+      for( unsigned int iV=0; iV<SimdSizeFloat; iV++ ) {
         if(!fitted[iV]) continue;
           // if the track fitted correctly store the track
         AliHLTTPCCASliceTrackInfo &track = fTrackInfos[nTracksCurrent];
@@ -772,7 +772,7 @@ void AliHLTTPCCAMerger::UnpackSlices()
 
 #if 1
 float_m AliHLTTPCCAMerger::FitTrack( AliHLTTPCCATrackParamVector &t, float_v &Alpha0V,
-                                      int hits[2000][uint_v::SimdLen], uint_v &firstHits, uint_v &NTrackHits,
+                                      int hits[2000][SimdSizeInt], uint_v &firstHits, uint_v &NTrackHits,
                                       int &nTracksV, float_m active0, bool dir )
 {
   // Fit the track
@@ -783,7 +783,7 @@ float_m AliHLTTPCCAMerger::FitTrack( AliHLTTPCCATrackParamVector &t, float_v &Al
   t.CalculateFitParameters( fitPar );
 
   constexpr int MaxNHits = 4*AliHLTTPCCAParameters::MaxNumberOfRows8; // koeff 4 reserves place for several turn
-  int hitsNew[MaxNHits][uint_v::SimdLen];
+  int hitsNew[MaxNHits][SimdSizeInt];
   uint_v nHitsNew( 0 );
 
   uint_v nHits(NTrackHits);
@@ -891,7 +891,7 @@ float_m AliHLTTPCCAMerger::FitTrack( AliHLTTPCCATrackParamVector &t, float_v &Al
 }
 #else
 float_m AliHLTTPCCAMerger::FitTrack( AliHLTTPCCATrackParamVector &t, float_v &Alpha0V,
-                                      int hits[2000][uint_v::SimdLen], uint_v &firstHits,uint_v &NTrackHits,
+                                      int hits[2000][SimdSizeInt], uint_v &firstHits,uint_v &NTrackHits,
                                       int &nTracksV, float_m active0, bool dir )
 {
   // Fit the track
@@ -902,7 +902,7 @@ float_m AliHLTTPCCAMerger::FitTrack( AliHLTTPCCATrackParamVector &t, float_v &Al
   t.CalculateFitParameters( fitPar );
 
   const int MaxNHits = 4*AliHLTTPCCAParameters::MaxNumberOfRows8; // koeff 4 reserves place for several turn
-  int hitsNew[MaxNHits][uint_v::SimdLen];
+  int hitsNew[MaxNHits][SimdSizeInt];
   uint_v nHitsNew(Vc::Zero);
 
   uint_v nHits(NTrackHits);
@@ -1011,7 +1011,7 @@ float_m AliHLTTPCCAMerger::FitTrack( AliHLTTPCCATrackParamVector &t, float_v &Al
 
 #if 0
 float_m AliHLTTPCCAMerger::FitTrackMerged( AliHLTTPCCATrackParamVector &t, float_v &Alpha0V,
-                                      int hits[100][uint_v::SimdLen], uint_v &firstHits, uint_v &NTrackHits,
+                                      int hits[100][SimdSizeInt], uint_v &firstHits, uint_v &NTrackHits,
                                       int &nTracksV, float_m active0, bool dir )
 {
   // Fit the track
@@ -1031,16 +1031,16 @@ float_m AliHLTTPCCAMerger::FitTrackMerged( AliHLTTPCCATrackParamVector &t, float
   int nHitsMax = nHits.max();
 
     // pack hits
-//  size_t arrSize = MaxNHits*float_v::SimdLen;	//TODO: use STL data structures
-//  constexpr int FixedSize = MaxNHits * float_v::SimdLen;
-  float xVs[MaxNHits*float_v::SimdLen] __attribute__ ((aligned(float_v::SimdLen*4)));
-  float yVs[MaxNHits*float_v::SimdLen] __attribute__ ((aligned(float_v::SimdLen*4)));
-  float zVs[MaxNHits*float_v::SimdLen] __attribute__ ((aligned(float_v::SimdLen*4)));
-  float sliceAlphaVs[MaxNHits*float_v::SimdLen] __attribute__ ((aligned(float_v::SimdLen*4)));
-  int RowVs[MaxNHits*float_v::SimdLen] __attribute__ ((aligned(float_v::SimdLen*4)));
+//  size_t arrSize = MaxNHits*SimdSizeFloat;	//TODO: use STL data structures
+//  constexpr int FixedSize = MaxNHits * SimdSizeFloat;
+  float xVs[MaxNHits*SimdSizeFloat] __attribute__ ((aligned(SimdSizeFloat*4)));
+  float yVs[MaxNHits*SimdSizeFloat] __attribute__ ((aligned(SimdSizeFloat*4)));
+  float zVs[MaxNHits*SimdSizeFloat] __attribute__ ((aligned(SimdSizeFloat*4)));
+  float sliceAlphaVs[MaxNHits*SimdSizeFloat] __attribute__ ((aligned(SimdSizeFloat*4)));
+  int RowVs[MaxNHits*SimdSizeFloat] __attribute__ ((aligned(SimdSizeFloat*4)));
 
   // ---
-//  float slVs[MaxNHits*float_v::SimdLen] __attribute__ ((aligned(float_v::SimdLen*4)));
+//  float slVs[MaxNHits*SimdSizeFloat] __attribute__ ((aligned(SimdSizeFloat*4)));
   // ---
 
   for ( int ihit = 0; ihit < nHitsMax; ihit++ ) {
@@ -1053,11 +1053,11 @@ float_m AliHLTTPCCAMerger::FitTrackMerged( AliHLTTPCCATrackParamVector &t, float
       if( !active[iV] ) continue;
       const unsigned int jhit = jhitV[iV];//firstHits[iV] + ihit;
       const AliHLTTPCCAClusterInfo &h = fClusterInfos[hits[jhit][iV]];
-      sliceAlphaVs[ihit*float_v::SimdLen+iV] = slices[h.ISlice()]->Param().Alpha();
-      xVs[ihit*float_v::SimdLen+iV] = h.X();
-      yVs[ihit*float_v::SimdLen+iV] = h.Y();
-      zVs[ihit*float_v::SimdLen+iV] = h.Z();
-      RowVs[ihit*uint_v::SimdLen+iV] = (unsigned int)h.IRow();
+      sliceAlphaVs[ihit*SimdSizeFloat+iV] = slices[h.ISlice()]->Param().Alpha();
+      xVs[ihit*SimdSizeFloat+iV] = h.X();
+      yVs[ihit*SimdSizeFloat+iV] = h.Y();
+      zVs[ihit*SimdSizeFloat+iV] = h.Z();
+      RowVs[ihit*SimdSizeInt+iV] = (unsigned int)h.IRow();
     }
   }
 
@@ -1069,11 +1069,11 @@ float_m AliHLTTPCCAMerger::FitTrackMerged( AliHLTTPCCATrackParamVector &t, float
 
     if(active.isEmpty()) continue;
 
-    const float_v &xV = reinterpret_cast<float_v&>(xVs[ihit*float_v::SimdLen]);
-    const float_v &yV = reinterpret_cast<float_v&>(yVs[ihit*float_v::SimdLen]);
-    const float_v &zV = reinterpret_cast<float_v&>(zVs[ihit*float_v::SimdLen]);
-    const float_v &sliceAlphaV = reinterpret_cast<float_v&>(sliceAlphaVs[ihit*float_v::SimdLen]);
-    const int_v &RowV = reinterpret_cast<int_v&>(RowVs[ihit*uint_v::SimdLen]);
+    const float_v &xV = reinterpret_cast<float_v&>(xVs[ihit*SimdSizeFloat]);
+    const float_v &yV = reinterpret_cast<float_v&>(yVs[ihit*SimdSizeFloat]);
+    const float_v &zV = reinterpret_cast<float_v&>(zVs[ihit*SimdSizeFloat]);
+    const float_v &sliceAlphaV = reinterpret_cast<float_v&>(sliceAlphaVs[ihit*SimdSizeFloat]);
+    const int_v &RowV = reinterpret_cast<int_v&>(RowVs[ihit*SimdSizeInt]);
 
     const float_m savedActive = active;
     const float_v rotateA = sliceAlphaV - Alpha0V;
@@ -1439,13 +1439,13 @@ void AliHLTTPCCAMerger::MergeBorderTracks( AliHLTTPCCABorderTrack B1[], int N1, 
                                 InParT1(  Tt1->InnerParam() ), InParT2;
     float_v OutAlphaT1( Tt1->OuterAlpha() ), OutAlphaT2,
             InAlphaT1( Tt1->InnerAlpha() ),  InAlphaT2;
-    const AliHLTTPCCATrackParam *T2OuterParamMemory[uint_v::SimdLen] = {0},
-                                *T2InnerParamMemory[uint_v::SimdLen] = {0};
+    const AliHLTTPCCATrackParam *T2OuterParamMemory[SimdSizeInt] = {0},
+                                *T2InnerParamMemory[SimdSizeInt] = {0};
     float_v T2InnerAlphaMemory,T2OuterAlphaMemory;
 
     for ( int i2 = ifirst2; ; ) {
       int nVecElements = 0;
-      for( ; nVecElements < int(uint_v::SimdLen) && dir * i2 <= dir * ilast2; i2 += dir ) {
+      for( ; nVecElements < int(SimdSizeInt) && dir * i2 <= dir * ilast2; i2 += dir ) {
 
         const AliHLTTPCCABorderTrack &b2 = B2[i2];
 
@@ -1518,7 +1518,7 @@ void AliHLTTPCCAMerger::MergeBorderTracks( AliHLTTPCCABorderTrack B1[], int N1, 
       OutAlphaT2 = (T2OuterAlphaMemory);
       InAlphaT2 = (T2InnerAlphaMemory);
 
-      float_m active = static_cast<float_m>( uint_v::iota( 0 )/*( Vc::IndexesFromZero )*/ < nVecElements );
+      float_m active = static_cast<float_m>( IndexesFromZeroInt/*( Vc::IndexesFromZero )*/ < nVecElements );
 
       const float_v &yE1v = OutParT1.Y();
       const float_v &xE1v = OutParT1.X();
@@ -1857,10 +1857,10 @@ void AliHLTTPCCAMerger::MergingPTmultimap()
     // ---
     AliHLTTPCCASliceOutput &slice1 = *( fkSlices[it->first.slice] );
     AliHLTTPCCASliceOutput &slice2 = *( fkSlices[it->second.slice] );
-    int vv1 = (it->first.id - fptSliceFirstTrack[it->first.slice])/float_v::SimdLen;
-    int vv2 = (it->second.id - fptSliceFirstTrack[it->second.slice])/float_v::SimdLen;
-    int ve1 = (it->first.id - fptSliceFirstTrack[it->first.slice])%float_v::SimdLen;
-    int ve2 = (it->second.id - fptSliceFirstTrack[it->second.slice])%float_v::SimdLen;
+    int vv1 = (it->first.id - fptSliceFirstTrack[it->first.slice])/SimdSizeFloat;
+    int vv2 = (it->second.id - fptSliceFirstTrack[it->second.slice])/SimdSizeFloat;
+    int ve1 = (it->first.id - fptSliceFirstTrack[it->first.slice])%SimdSizeFloat;
+    int ve2 = (it->second.id - fptSliceFirstTrack[it->second.slice])%SimdSizeFloat;
     AliHLTTPCCASliceTrackVector &sTrackV1 = slice1.TrackV( vv1 );
     AliHLTTPCCASliceTrackVector &sTrackV2 = slice2.TrackV( vv2 );
     merge_sort_helper[nMerged].nHits = sTrackV1.NClusters()[ve1] + sTrackV2.NClusters()[ve2];
@@ -1874,8 +1874,8 @@ void AliHLTTPCCAMerger::MergingPTmultimap()
       merge_candidates[nMerged].iSlice[2] = it_next->second.slice;
 
       AliHLTTPCCASliceOutput &slice3 = *( fkSlices[it_next->second.slice] );
-      int vv3 = (it_next->second.id - fptSliceFirstTrack[it_next->second.slice])/float_v::SimdLen;
-      int ve3 = (it_next->second.id - fptSliceFirstTrack[it_next->second.slice])%float_v::SimdLen;
+      int vv3 = (it_next->second.id - fptSliceFirstTrack[it_next->second.slice])/SimdSizeFloat;
+      int ve3 = (it_next->second.id - fptSliceFirstTrack[it_next->second.slice])%SimdSizeFloat;
       AliHLTTPCCASliceTrackVector &sTrackV3 = slice3.TrackV( vv3 );
       merge_sort_helper[nMerged] = merge_sort_helper[nMerged-1];
       merge_sort_helper[nMerged].nHits += sTrackV3.NClusters()[ve3];
@@ -1892,14 +1892,14 @@ void AliHLTTPCCAMerger::MergingPTmultimap()
   int nTracksCurrent = 0;
   int nClustersCurrent = 0;
   int nTracksVector(0);
-  int hits[100][uint_v::SimdLen];
-  float *nHitsS = (float*) _mm_malloc(sizeof(float_v), float_v::SimdLen*4);
-  float *startAlphaS = (float*) _mm_malloc(sizeof(float_v), float_v::SimdLen*4);
-  float *endAlphaS = (float*) _mm_malloc(sizeof(float_v), float_v::SimdLen*4);
-  unsigned int tr_used[uint_v::SimdLen], tr_slice[uint_v::SimdLen];
-  int nnext[float_v::SimdLen], fstclnext[2][float_v::SimdLen], nclnext[2][float_v::SimdLen], slicenext[2][float_v::SimdLen], trnext[2][float_v::SimdLen];
+  int hits[100][SimdSizeInt];
+  float *nHitsS = (float*) _mm_malloc(sizeof(float_v), SimdSizeFloat*4);
+  float *startAlphaS = (float*) _mm_malloc(sizeof(float_v), SimdSizeFloat*4);
+  float *endAlphaS = (float*) _mm_malloc(sizeof(float_v), SimdSizeFloat*4);
+  unsigned int tr_used[SimdSizeInt], tr_slice[SimdSizeInt];
+  int nnext[SimdSizeFloat], fstclnext[2][SimdSizeFloat], nclnext[2][SimdSizeFloat], slicenext[2][SimdSizeFloat], trnext[2][SimdSizeFloat];
 
-  AliHLTTPCCATrackParam pStartPoint[uint_v::SimdLen];
+  AliHLTTPCCATrackParam pStartPoint[SimdSizeInt];
   AliHLTTPCCASliceTrackVector *sTrackV[3] = {0};
 
   for( int iTr = 0; iTr < nMerged; iTr++ ) {
@@ -1907,16 +1907,16 @@ void AliHLTTPCCAMerger::MergingPTmultimap()
     if ( !fkSlices[m_cand.iSlice[0]] ) continue;
     const AliHLTTPCCASliceOutput &slice = *( fkSlices[m_cand.iSlice[0]] );
     if( nTracksVector == 0 ) {
-      for( int i = 0; i < uint_v::SimdLen; i++ ) nHitsS[i] = 0;
+      for( int i = 0; i < SimdSizeInt; i++ ) nHitsS[i] = 0;
     }
 
     nnext[nTracksVector] = 0;
     int vv[3], ve[3];
-    vv[0] = ( m_cand.iTrack[0] - fptSliceFirstTrack[m_cand.iSlice[0]] ) / float_v::SimdLen;
-    ve[0] = ( m_cand.iTrack[0] - fptSliceFirstTrack[m_cand.iSlice[0]] ) % float_v::SimdLen;
+    vv[0] = ( m_cand.iTrack[0] - fptSliceFirstTrack[m_cand.iSlice[0]] ) / SimdSizeFloat;
+    ve[0] = ( m_cand.iTrack[0] - fptSliceFirstTrack[m_cand.iSlice[0]] ) % SimdSizeFloat;
     sTrackV[0] = &slice.TrackV( vv[0] );
-    vv[1] = ( m_cand.iTrack[1] - fptSliceFirstTrack[m_cand.iSlice[1]] ) / float_v::SimdLen;
-    ve[1] = ( m_cand.iTrack[1] - fptSliceFirstTrack[m_cand.iSlice[1]] ) % float_v::SimdLen;
+    vv[1] = ( m_cand.iTrack[1] - fptSliceFirstTrack[m_cand.iSlice[1]] ) / SimdSizeFloat;
+    ve[1] = ( m_cand.iTrack[1] - fptSliceFirstTrack[m_cand.iSlice[1]] ) % SimdSizeFloat;
     const AliHLTTPCCASliceOutput &slice1 = *( fkSlices[m_cand.iSlice[1]] );
     sTrackV[1] = &slice1.TrackV( vv[1] );
     nnext[nTracksVector]++;
@@ -1932,8 +1932,8 @@ void AliHLTTPCCAMerger::MergingPTmultimap()
       startAlphaS[nTracksVector] = slices[m_cand.iSlice[0]]->Param().Alpha();
       endAlphaS[nTracksVector]   = startAlphaS[nTracksVector];
       if( m_cand.nTracks > 2 ) {
-	vv[2] = ( m_cand.iTrack[2] - fptSliceFirstTrack[m_cand.iSlice[2]] ) / float_v::SimdLen;
-	ve[2] = ( m_cand.iTrack[2] - fptSliceFirstTrack[m_cand.iSlice[2]] ) % float_v::SimdLen;
+	vv[2] = ( m_cand.iTrack[2] - fptSliceFirstTrack[m_cand.iSlice[2]] ) / SimdSizeFloat;
+	ve[2] = ( m_cand.iTrack[2] - fptSliceFirstTrack[m_cand.iSlice[2]] ) % SimdSizeFloat;
 	const AliHLTTPCCASliceOutput &slice2 = *( fkSlices[m_cand.iSlice[2]] );
 	sTrackV[2] = &slice2.TrackV( vv[2] );
 	nnext[nTracksVector]++;
@@ -1953,7 +1953,7 @@ void AliHLTTPCCAMerger::MergingPTmultimap()
       nTracksVector++;
     }
 
-    if( nTracksVector == float_v::SimdLen || iTr >= nMerged - 1 ) {
+    if( nTracksVector == SimdSizeFloat || iTr >= nMerged - 1 ) {
       float_v &nHitsF = reinterpret_cast<float_v&>(nHitsS[0]);
       uint_v nHits(nHitsF);
       float_v &startAlpha = reinterpret_cast<float_v&>(startAlphaS[0]);
@@ -1963,8 +1963,8 @@ void AliHLTTPCCAMerger::MergingPTmultimap()
       fitted &= static_cast<float_m>( uint_v( Vc::IndexesFromZero ) < nTracksVector );
       AliHLTTPCCATrackParamVector vEndPoint;
 
-      const AliHLTTPCCATrackParam *pStartPointC[uint_v::SimdLen] = {0};
-      for( int i = 0; i < uint_v::SimdLen; i++ ) pStartPointC[i] = &pStartPoint[i];
+      const AliHLTTPCCATrackParam *pStartPointC[SimdSizeInt] = {0};
+      for( int i = 0; i < SimdSizeInt; i++ ) pStartPointC[i] = &pStartPoint[i];
       ConvertPTrackParamToVector(pStartPointC,vEndPoint,nTracksVector); // save as end because it will be fitted
 
       float_v vEndAlpha(Vc::Zero);
@@ -1986,12 +1986,12 @@ float_m fitted_tmp = fitted;
       // if chi2 per degree of freedom > 3. sigma - mark track with 0
       fitted &= vStartPoint.Chi2() < 9.f*static_cast<float_v>(vStartPoint.NDF());	//TODO: improve this cut
 fitted = fitted_tmp;
-      for(int iV=0; iV<float_v::SimdLen; iV++) {
+      for(int iV=0; iV<SimdSizeFloat; iV++) {
         if(!fitted[iV]) continue;
       	// if the track fitted correctly store the track
       	const AliHLTTPCCASliceOutput &slice0 = *( fkSlices[tr_slice[iV]] );
-      	int vv0 = tr_used[iV] / float_v::SimdLen;
-      	int ve0 = tr_used[iV] % float_v::SimdLen;
+      	int vv0 = tr_used[iV] / SimdSizeFloat;
+      	int ve0 = tr_used[iV] % SimdSizeFloat;
       	AliHLTTPCCASliceTrackVector &sTrackV0 = slice0.TrackV( vv0 );
       	sTrackV0.SetUsed( ve0, 7 );
       	sTrackV0.SetNSegments( nnext[iV], ve0 );
@@ -1999,8 +1999,8 @@ fitted = fitted_tmp;
       	  sTrackV0.SetNClustersSeg( nclnext[i][iV], i, ve0 );
           sTrackV0.SetFirstClusterRefSeg( fstclnext[i][iV], i, ve0 );
           sTrackV0.SetSliceSeg( slicenext[i][iV], i, ve0 );
-          int vv01 = (int)(trnext[i][iV]) / float_v::SimdLen;
-          int ve01 = (int)(trnext[i][iV]) % float_v::SimdLen;
+          int vv01 = (int)(trnext[i][iV]) / SimdSizeFloat;
+          int ve01 = (int)(trnext[i][iV]) % SimdSizeFloat;
           const AliHLTTPCCASliceOutput &slice01 = *( fkSlices[(int)(slicenext[i][iV])] );
           AliHLTTPCCASliceTrackVector &sTrackV01 = slice01.TrackV( vv01 );
           sTrackV01.SetActive( ve01, false );
@@ -2015,10 +2015,10 @@ fitted = fitted_tmp;
   for ( int iSlice = 0; iSlice < fgkNSlices; iSlice++ ) {
     if ( !fkSlices[iSlice] ) continue;
     const AliHLTTPCCASliceOutput &slice = *( fkSlices[iSlice] );
-    for( int iTr = 0; iTr < slice.NTracks(); iTr += float_v::SimdLen ) {
-      unsigned int iv = iTr/float_v::SimdLen;
+    for( int iTr = 0; iTr < slice.NTracks(); iTr += SimdSizeFloat ) {
+      unsigned int iv = iTr/SimdSizeFloat;
       const AliHLTTPCCASliceTrackVector &sTrackV = slice.TrackV( iv );
-      for( int iV = 0; iV < float_v::SimdLen; iV++ ) {
+      for( int iV = 0; iV < SimdSizeFloat; iV++ ) {
 	if( !(sTrackV.Active()[iV]) ) continue;
 	const unsigned int NHits = sTrackV.NClusters()[iV];
 	nClustersCurrent += NHits;//sTrackV.NClusters()[iV];
@@ -2077,9 +2077,9 @@ void AliHLTTPCCAMerger::MergingPT(int number)
   std::sort(&(fTrList[0]), &(fTrList[fTracksTotal]), TrSort::trComp);
   float_v startAlphaN;
   float_v endAlphaN;
-  int hitsN[1000][uint_v::SimdLen];
+  int hitsN[1000][SimdSizeInt];
   uint_v nHitsN;//, nHits1;
-  const AliHLTTPCCATrackParam *pStartPointN[uint_v::SimdLen] = {0};
+  const AliHLTTPCCATrackParam *pStartPointN[SimdSizeInt] = {0};
   int nTracksVectorN(0);
   float_m mergedN;
   int_v tr_usedN, tr_slice;
@@ -2150,7 +2150,7 @@ void AliHLTTPCCAMerger::MergingPT(int number)
       startAlphaN[nTracksVectorN] = slices[iSlice]->Param().Alpha();
       endAlphaN[nTracksVectorN]   = startAlphaN[nTracksVectorN];
       nTracksVectorN++;
-      if( nTracksVectorN == float_v::SimdLen || iTr >= fTracksTotal - 1 ) {
+      if( nTracksVectorN == SimdSizeFloat || iTr >= fTracksTotal - 1 ) {
 	float_m fitted = float_m(true);
 	fitted &= static_cast<float_m>(static_cast<uint_v>(nHitsN) >= 4);
 	const uint_v NAllHits(nHitsN);
@@ -2179,7 +2179,7 @@ void AliHLTTPCCAMerger::MergingPT(int number)
 	// if chi2 per degree of freedom > 3. sigma - mark track with 0
 	fitted &= vStartPoint.Chi2() < 9.f*static_cast<float_v>(vStartPoint.NDF());	//TODO: improve this cut
 
-	for(int iV=0; iV<float_v::SimdLen; iV++) {
+	for(int iV=0; iV<SimdSizeFloat; iV++) {
 	  if(!fitted[iV]) continue;
 	  // if the track fitted correctly store the track
 	  AliHLTTPCCASliceTrackInfo &track = tmpT[nTracksCurrent];
@@ -2224,9 +2224,9 @@ void AliHLTTPCCAMerger::MergingPT(int number)
 
     float_v startAlpha;
     float_v endAlpha;
-    int hits[1000][uint_v::SimdLen];
+    int hits[1000][SimdSizeInt];
     uint_v nHits;//, nHits1;
-    const AliHLTTPCCATrackParam *pStartPoint[uint_v::SimdLen] = {0};
+    const AliHLTTPCCATrackParam *pStartPoint[SimdSizeInt] = {0};
     int nTracksVector(0);
     unsigned int nCluNew(0);
 
@@ -2274,10 +2274,10 @@ void AliHLTTPCCAMerger::MergingPT(int number)
       endAlpha[nTracksVector]   = startAlpha[nTracksVector];
       nTracksVector++;
 	}
-      assert( nTracksVector <= float_v::SimdLen );
-      if( nTracksVector == float_v::SimdLen || itr1 >= slice.NTracks() - 1 ) {
-	AliHLTTPCCATrackParam* endParamCopy = new AliHLTTPCCATrackParam[float_v::SimdLen];
-	AliHLTTPCCATrackParam* startParamCopy = new AliHLTTPCCATrackParam[float_v::SimdLen];
+      assert( nTracksVector <= SimdSizeFloat );
+      if( nTracksVector == SimdSizeFloat || itr1 >= slice.NTracks() - 1 ) {
+	AliHLTTPCCATrackParam* endParamCopy = new AliHLTTPCCATrackParam[SimdSizeFloat];
+	AliHLTTPCCATrackParam* startParamCopy = new AliHLTTPCCATrackParam[SimdSizeFloat];
         float_m fitted = float_m(true);
         fitted &= static_cast<float_m>(static_cast<uint_v>(nHits) >= 4);
         const uint_v NAllHits(nHits);
@@ -2305,7 +2305,7 @@ void AliHLTTPCCAMerger::MergingPT(int number)
         fitted &= FitTrack( vStartPoint, vStartAlpha, hits, firstHits, nHits, nTracksVector, fitted, 1 );
         // if chi2 per degree of freedom > 3. sigma - mark track with 0
         fitted &= vStartPoint.Chi2() < 9.f*static_cast<float_v>(vStartPoint.NDF());	//TODO: improve this cut
-        for(int iV=0; iV<float_v::SimdLen; iV++) {
+        for(int iV=0; iV<SimdSizeFloat; iV++) {
           if(!fitted[iV]) continue;
           AliHLTTPCCASliceTrackInfo &mTrack0 = fTrackInfos[fptSliceFirstTrack[iSlice] + int(tr_used[iV])];
           // if the track fitted correctly store the track
@@ -2391,11 +2391,11 @@ void AliHLTTPCCAMerger::MergingPT(int number)
   }
 #endif
   std::sort(&(unmergedTrList[0]), &(unmergedTrList[refitCounter]), TrSort::trComp);
-  const AliHLTTPCCATrackParam *pStartPoint1[uint_v::SimdLen] = {0};
+  const AliHLTTPCCATrackParam *pStartPoint1[SimdSizeInt] = {0};
   int nTracksVector = 0;
   float_v startAlpha, endAlpha;
   uint_v nHits(Vc::Zero);
-  int hits[100][int_v::SimdLen];
+  int hits[100][SimdSizeInt];
   int firstUnmerged(nTracksCurrent), nUnmerged(0);
 int_v trIds;
   for( int iTr = 0; iTr < refitCounter; iTr++ ) {
@@ -2414,7 +2414,7 @@ trIds[nTracksVector] = unmergedTrList[iTr].trId;
             }
 
       nTracksVector++;
-      if( (nTracksVector == float_v::SimdLen) || (iTr == (refitCounter-1)) ) {
+      if( (nTracksVector == SimdSizeFloat) || (iTr == (refitCounter-1)) ) {
 	  float_m fitted = float_m(true);
 	  fitted &= static_cast<float_m>(static_cast<uint_v>(nHits) >= 4);
 	  fitted &= static_cast<float_m>( uint_v( Vc::IndexesFromZero ) < nTracksVector );
@@ -2435,7 +2435,7 @@ trIds[nTracksVector] = unmergedTrList[iTr].trId;
 	  // if chi2 per degree of freedom > 3. sigma - mark track with 0
 	  fitted &= vStartPoint.Chi2() < 9.f*static_cast<float_v>(vStartPoint.NDF());
 
-	  for(int iV=0; iV<float_v::SimdLen; iV++) {
+	  for(int iV=0; iV<SimdSizeFloat; iV++) {
 	      if(!fitted[iV]) continue;
 	      AliHLTTPCCASliceTrackInfo &track = tmpT[nTracksCurrent];
 	      track.SetInnerParam( AliHLTTPCCATrackParam( vStartPoint, iV ) );
@@ -2494,8 +2494,8 @@ trIds[nTracksVector] = unmergedTrList[iTr].trId;
     tmpSliceTrackInfoStart[iSlice] = nEndTracks;
     assert( iSlice == 0 || nEndTracks == tmpSliceTrackInfoStart[iSlice-1] + nTrNew[iSlice-1] );
 
-    const AliHLTTPCCATrackParam *pStartPoint[int_v::SimdLen] = {0};
-    const AliHLTTPCCATrackParam *pEndPoint[int_v::SimdLen] = {0};
+    const AliHLTTPCCATrackParam *pStartPoint[SimdSizeInt] = {0};
+    const AliHLTTPCCATrackParam *pEndPoint[SimdSizeInt] = {0};
     float_v StartAlpha, EndAlpha;
 
     float_v vStartAlpha(Vc::Zero);
@@ -2617,8 +2617,8 @@ void AliHLTTPCCAMerger::Merging(int number)
     tmpSliceTrackInfoStart[iSlice] = nEndTracks;
     assert( iSlice == 0 || nEndTracks == tmpSliceTrackInfoStart[iSlice-1] + nTrNew[iSlice-1] );
 
-    const AliHLTTPCCATrackParam *pStartPoint[int_v::SimdLen] = {0};
-    const AliHLTTPCCATrackParam *pEndPoint[int_v::SimdLen] = {0};
+    const AliHLTTPCCATrackParam *pStartPoint[SimdSizeInt] = {0};
+    const AliHLTTPCCATrackParam *pEndPoint[SimdSizeInt] = {0};
     float_v StartAlpha( 0.f ), EndAlpha( 0.f );
 
     float_v vStartAlpha( 0.f );
@@ -2749,7 +2749,7 @@ void AliHLTTPCCAMerger::Merging(int number)
         // pack data
       int nVecElements = 0;
       uint_v iIndexes( 0 );
-      for ( ; nVecElements < int(uint_v::SimdLen) && itr < nChains; itr++ ) {
+      for ( ; nVecElements < int(SimdSizeInt) && itr < nChains; itr++ ) {
         const unsigned int sI = firstInChainIndex[itr];
         AliHLTTPCCASliceTrackInfo& trackOld = fTrackInfos[sI];
 
@@ -2770,9 +2770,9 @@ void AliHLTTPCCAMerger::Merging(int number)
       if (nVecElements == 0) break;
 
         // Convert their parameters to SIMD vectors
-      float_m active = static_cast<float_m>( int_v::iota( 0 )/*( Vc::IndexesFromZero )*/ < nVecElements );
+      float_m active = static_cast<float_m>( IndexesFromZeroInt/*( Vc::IndexesFromZero )*/ < nVecElements );
 
-      int hits[2000][uint_v::SimdLen];
+      int hits[2000][SimdSizeInt];
       uint_v firstHit(1000u);
 
       ConvertPTrackParamToVector(pStartPoint,vStartPoint,nVecElements);
@@ -2795,14 +2795,14 @@ void AliHLTTPCCAMerger::Merging(int number)
       const int_m &activeI = static_cast<int_m>(active);
       const uint_m &activeU = static_cast<uint_m>(active);
       uint_v vNHits( 0 );
-      for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+      for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
 	if( !activeU[i] ) continue;
 	vNHits.insert(i, fTrackInfos[(unsigned int)iIndexes[i]].NClusters());
 //	[i] = fTrackInfos[(unsigned int)iIndexes[i]].NClusters();
       }
 
       int_v vFirstClusterRef( 0 );
-      for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+      for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
       	if( !activeI[i] ) continue;
       	vFirstClusterRef.insert(i, fTrackInfos[(unsigned int)iIndexes[i]].FirstClusterRef());
 //	[i] = fTrackInfos[(unsigned int)iIndexes[i]].FirstClusterRef();
@@ -2811,7 +2811,7 @@ void AliHLTTPCCAMerger::Merging(int number)
       for ( unsigned int jhit = 0; jhit < (unsigned int)vNHits.max(); jhit++ ) {
         const int_m mask = int_m(active) && int_m(jhit < vNHits);
         int_v id = vFirstClusterRef + static_cast<int>(jhit);
-        for( unsigned int iV=0; iV<int_v::SimdLen; iV++ ) {
+        for( unsigned int iV=0; iV<SimdSizeInt; iV++ ) {
           if(!mask[iV]) continue;
           hits[static_cast<size_t>(firstHit[iV])+jhit][iV] = id[iV];
         }
@@ -2829,13 +2829,13 @@ void AliHLTTPCCAMerger::Merging(int number)
         const int_m &isNeighbourI = static_cast<int_m>(isNeighbour);
         const uint_m &isNeighbourU = static_cast<uint_m>(isNeighbour);
         int_v vNextNeighbour( 0 );
-        for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+        for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
           if( !isNeighbourI[i] ) continue;
           vNextNeighbour.insert(i, fTrackInfos[(unsigned int)jIndexes[i]].NextNeighbour());
 //	  [i] = fTrackInfos[(unsigned int)jIndexes[i]].NextNeighbour();
         }
         uint_v vSliceNextNeighbour( 0 );
-        for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+        for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
           if( !isNeighbourU[i] ) continue;
           vSliceNextNeighbour.insert(i, fTrackInfos[(unsigned int)jIndexes[i]].SliceNextNeighbour());
 //	  [i] = fTrackInfos[(unsigned int)jIndexes[i]].SliceNextNeighbour();
@@ -2846,14 +2846,14 @@ void AliHLTTPCCAMerger::Merging(int number)
 
           // take the next neighbour
         const int_m &isNeighbourI0 = static_cast<int_m>(isNeighbour);
-        for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+        for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
           if( !isNeighbourI0[i] ) continue;
           jIndexes.insert(i, fSliceTrackInfoStart[(unsigned int)vSliceNextNeighbour[i]]);
 //	  [i] = fSliceTrackInfoStart[(unsigned int)vSliceNextNeighbour[i]];
         }
         jIndexes += vNextNeighbour;
         int_v vUsed( 0 );
-        for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+        for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
           if( !isNeighbourI0[i] ) continue;
           vUsed.insert(i, fTrackInfos[(unsigned int)jIndexes[i]].Used());
 //	  [i] = fTrackInfos[(unsigned int)jIndexes[i]].Used();
@@ -2874,7 +2874,7 @@ void AliHLTTPCCAMerger::Merging(int number)
 
       const float_m &swap = active && (vEndPoint.X() < vStartPoint.X());
       if( !(swap.isEmpty())) {
-        for( unsigned int iV=0; iV<float_v::SimdLen; iV++ ) {
+        for( unsigned int iV=0; iV<SimdSizeFloat; iV++ ) {
           if(!swap[iV]) continue;
           for ( unsigned int i = 0; i < (unsigned int)vNHits[iV]; i++ ) hits[i][iV] = hits[(unsigned int)(firstHit[iV]+vNHits[iV]-1-i)][iV];
         }
@@ -2903,7 +2903,7 @@ void AliHLTTPCCAMerger::Merging(int number)
       vNHits = nHits;
 
         // store tracks
-      for( unsigned int iV=0; iV<float_v::SimdLen; iV++ ) {
+      for( unsigned int iV=0; iV<SimdSizeFloat; iV++ ) {
         if(!active[iV]) continue;
 
         int h[1000];
@@ -3039,19 +3039,19 @@ void AliHLTTPCCAMerger::Merging(int number)
 }
 
 float_m AliHLTTPCCAMerger::AddNeighbour( const uint_v& jIndexes, const int& nVecElements, const float_m& isNeighbour,
-int hits[2000][uint_v::SimdLen], uint_v& firstHit, AliHLTTPCCATrackParamVector& vStartPoint, AliHLTTPCCATrackParamVector& vEndPoint, float_v& vStartAlpha, float_v& vEndAlpha, uint_v& vNHits )
+int hits[2000][SimdSizeInt], uint_v& firstHit, AliHLTTPCCATrackParamVector& vStartPoint, AliHLTTPCCATrackParamVector& vEndPoint, float_v& vStartAlpha, float_v& vEndAlpha, uint_v& vNHits )
 {
   float_m mask = isNeighbour;
   const uint_m &maskU = static_cast<uint_m>(mask);
   uint_v jNHits( 0 );
-  for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+  for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
     if( !maskU[i] ) continue;
     jNHits.insert(i, fTrackInfos[(unsigned int)jIndexes[i]].NClusters());
 //    [i] = fTrackInfos[(unsigned int)jIndexes[i]].NClusters();
   }
   float_v vInnerAlpha( 0.f );
   float_v vOuterAlpha( 0.f );
-  for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+  for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
     if( !mask[i] ) continue;
     vInnerAlpha.insert(i, fTrackInfos[(unsigned int)jIndexes[i]].InnerAlpha());
 //    [i] = fTrackInfos[(unsigned int)jIndexes[i]].InnerAlpha();
@@ -3062,9 +3062,9 @@ int hits[2000][uint_v::SimdLen], uint_v& firstHit, AliHLTTPCCATrackParamVector& 
   AliHLTTPCCATrackParamVector vInnerParam;
   AliHLTTPCCATrackParamVector vOuterParam;
 
-  const AliHLTTPCCATrackParam *pInnerParam[int_v::SimdLen] = {0};
-  const AliHLTTPCCATrackParam *pOuterParam[int_v::SimdLen] = {0};
-  for( unsigned int iV = 0; iV < float_v::SimdLen; iV++ ) {
+  const AliHLTTPCCATrackParam *pInnerParam[SimdSizeInt] = {0};
+  const AliHLTTPCCATrackParam *pOuterParam[SimdSizeInt] = {0};
+  for( unsigned int iV = 0; iV < SimdSizeFloat; iV++ ) {
     if(!mask[iV]) continue;
     AliHLTTPCCASliceTrackInfo &segment = fTrackInfos[jIndexes[iV]];
     pInnerParam[iV] = &segment.InnerParam();
@@ -3180,13 +3180,13 @@ int hits[2000][uint_v::SimdLen], uint_v& firstHit, AliHLTTPCCATrackParamVector& 
   dir = dir_float;
     // add hits of the neighbour
   int_v jFirstClusterRef( 0 );
-  for( unsigned int i = 0; i < float_v::SimdLen; i++ ) {
+  for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
     if( !mask[i] ) continue;
     jFirstClusterRef.insert(i, fTrackInfos[(unsigned int)jIndexes[i]].FirstClusterRef());
 //    [i] = fTrackInfos[(unsigned int)jIndexes[i]].FirstClusterRef();
   }
 
-  for( unsigned int iV=0; iV<float_v::SimdLen; iV++ ) {
+  for( unsigned int iV=0; iV<SimdSizeFloat; iV++ ) {
     if(!mask[iV]) continue;
     for ( unsigned int jhit = 0; jhit < (unsigned int)jNHits[iV]; jhit++ ) {
       const int& id = jFirstClusterRef[iV] + jhit;

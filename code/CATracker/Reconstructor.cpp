@@ -156,10 +156,10 @@ int AliHLTTPCCATracker::Reconstructor::execute()
   for ( int rowIndex = 0; rowIndex < d->Param().NRows(); ++rowIndex ) {
     const AliHLTTPCCARow &row = d->fData.Row( rowIndex );
     const unsigned numberOfHits = row.NHits();
-    for ( unsigned int i = 0; i < numberOfHits; i += int_v::SimdLen ) {
-      const uint_v hitIndexes = uint_v::iota( 0 )/*( Vc::IndexesFromZero )*/ + i;
+    for ( unsigned int i = 0; i < numberOfHits; i += SimdSizeInt ) {
+      const uint_v hitIndexes = IndexesFromZeroInt/*( Vc::IndexesFromZero )*/ + i;
       int_v usedTemp;
-      for( unsigned int j = 0; j < float_v::SimdLen; j++ ) {
+      for( unsigned int j = 0; j < SimdSizeFloat; j++ ) {
 	usedTemp.insert(j, d->fData.HitDataIsUsed( row )[hitIndexes[j]]);
 //	[j] = d->fData.HitDataIsUsed( row )[(unsigned int)hitIndexes[j]];
       }
@@ -174,8 +174,8 @@ int AliHLTTPCCATracker::Reconstructor::execute()
   for ( int rowIndex = 0; rowIndex < d->Param().NRows(); ++rowIndex ) {
     const AliHLTTPCCARow &row = d->fData.Row( rowIndex );
     const unsigned numberOfHits = row.NHits();
-    for ( unsigned int i = 0; i < numberOfHits; i += int_v::SimdLen ) {
-      const uint_v hitIndexes = uint_v::iota( 0 )/*( Vc::IndexesFromZero )*/ + i;
+    for ( unsigned int i = 0; i < numberOfHits; i += SimdSizeInt ) {
+      const uint_v hitIndexes = IndexesFromZeroInt/*( Vc::IndexesFromZero )*/ + i;
       const int_m validHitsMask = (hitIndexes < numberOfHits);
       const int_v isUsed = int_v( d->fData.HitDataIsUsed( row ), static_cast<uint_v>(hitIndexes), validHitsMask);
        ASSERT( ((isUsed >= int_v( Vc::Zero )) && (isUsed <= int_v( 1 )) && validHitsMask) == validHitsMask,
@@ -260,7 +260,7 @@ int AliHLTTPCCATracker::Reconstructor::execute()
         int NRowDnHits = 0;
         if (rowIndex - rowStep >= 0)    NRowDnHits = d->fData.Row( rowIndex - rowStep ).NHits();
         for ( int i = 0; i < NRowHits; i += int_v::Size ) {
-          const int_v hitIndexes = int_v::iota( 0 )/*( Vc::IndexesFromZero )*/ + i;
+          const int_v hitIndexes = IndexesFromZeroInt/*( Vc::IndexesFromZero )*/ + i;
           int_m validHitsMask = hitIndexes < NRowHits;
             // validHitsMask &= ( int_v(d->fData.HitDataIsUsed( row ), static_cast<uint_v>(hitIndexes) ) == int_v( Vc::Zero ) );
 
@@ -351,7 +351,7 @@ int AliHLTTPCCATracker::Reconstructor::execute()
         int NRowDnHits = 0;
         if (rowIndex - rowStep >= 0)    NRowDnHits = d->fData.Row( rowIndex - rowStep ).NHits();
         for ( int i = 0; i < NRowHits; i += int_v::Size ) {
-          const int_v hitIndexes = int_v::iota( 0 )/*( Vc::IndexesFromZero )*/ + i;
+          const int_v hitIndexes = IndexesFromZeroInt/*( Vc::IndexesFromZero )*/ + i;
           int_m validHitsMask = hitIndexes < NRowHits;
             // validHitsMask &= ( int_v(d->fData.HitDataIsUsed( row ), static_cast<uint_v>(hitIndexes) ) == int_v( Vc::Zero ) );
 
@@ -422,8 +422,8 @@ int AliHLTTPCCATracker::Reconstructor::execute()
   for ( int rowIndex = 0; rowIndex < d->Param().NRows(); ++rowIndex ) {
     const AliHLTTPCCARow &row = d->fData.Row( rowIndex );
     const unsigned numberOfHits = row.NHits();
-    for ( unsigned int i = 0; i < numberOfHits; i += int_v::SimdLen ) {
-      const uint_v hitIndexes = uint_v::iota( 0 )/*( Vc::IndexesFromZero )*/ + i;
+    for ( unsigned int i = 0; i < numberOfHits; i += SimdSizeInt ) {
+      const uint_v hitIndexes = IndexesFromZeroInt/*( Vc::IndexesFromZero )*/ + i;
       const int_m validHitsMask = (hitIndexes < numberOfHits);
       const int_v isUsed = int_v( d->fData.HitDataIsUsed( row ), static_cast<uint_v>(hitIndexes), validHitsMask);
        ASSERT( ((isUsed >= int_v( 0 )) && (isUsed <= int_v( 1 )) && validHitsMask) == validHitsMask,
@@ -436,9 +436,9 @@ int AliHLTTPCCATracker::Reconstructor::execute()
   d->fTrackletVectors.Resize( d->fData.NumberOfHits() / 10 + 5 );
 #else
 #ifdef V6
-  d->fTrackletVectors.Resize( ( d->fNTracklets + save_up_links.size()/2 + int_v::SimdLen - 1 ) / int_v::SimdLen );
+  d->fTrackletVectors.Resize( ( d->fNTracklets + save_up_links.size()/2 + SimdSizeInt - 1 ) / SimdSizeInt );
 #else
-  d->fTrackletVectors.Resize( ( d->fNTracklets + int_v::SimdLen - 1 ) / int_v::SimdLen);
+  d->fTrackletVectors.Resize( ( d->fNTracklets + SimdSizeInt - 1 ) / SimdSizeInt);
 #endif
 #endif
 
@@ -460,8 +460,8 @@ int AliHLTTPCCATracker::Reconstructor::execute()
   for ( int rowIndex = 0; rowIndex < d->Param().NRows(); ++rowIndex ) {
     const AliHLTTPCCARow &row = d->fData.Row( rowIndex );
     const unsigned numberOfHits = row.NHits();
-    for ( unsigned int i = 0; i < numberOfHits; i += int_v::SimdLen ) {
-      const uint_v hitIndexes = uint_v::iota( 0 )/*( Vc::IndexesFromZero )*/ + i;
+    for ( unsigned int i = 0; i < numberOfHits; i += SimdSizeInt ) {
+      const uint_v hitIndexes = IndexesFromZeroInt/*( Vc::IndexesFromZero )*/ + i;
       const int_m validHitsMask = (hitIndexes < numberOfHits);
       const int_v isUsed = int_v( d->fData.HitDataIsUsed( row ), static_cast<uint_v>(hitIndexes), validHitsMask);
       ASSERT( ((isUsed >= int_v( 0 )) && (isUsed <= int_v( 3 )) && validHitsMask) == validHitsMask,
