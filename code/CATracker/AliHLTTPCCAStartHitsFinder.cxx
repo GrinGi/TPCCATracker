@@ -73,7 +73,11 @@ void AliHLTTPCCAStartHitsFinder::run( AliHLTTPCCATracker &tracker, SliceData &da
       int_v hitDataTemp;
       for( unsigned int ii = 0; ii < SimdSizeFloat; ii++ ) {
 //      	hitDataTemp[ii] = data.HitDataIsUsed( row )[(unsigned int)hitIndexes[ii]];
+#ifndef USE_VC
 	hitDataTemp.insert(ii, data.HitDataIsUsed( row )[(size_t)hitIndexes[ii]]);
+#else
+        hitDataTemp[ii] = data.HitDataIsUsed( row )[(unsigned int)hitIndexes[ii]];
+#endif
       }
       validHitsMask &= ( hitDataTemp == int_v( 0 ) );
       // hits that have a link up but none down == the start of a Track
@@ -90,7 +94,11 @@ void AliHLTTPCCAStartHitsFinder::run( AliHLTTPCCATracker &tracker, SliceData &da
           for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
             if( !validHitsMask[i] ) continue;
 //            upperHitIndexes[i] = data.HitLinkUpData( data.Row( iRow ) )[(unsigned int)upperHitIndexes[i]];
+#ifndef USE_VC
             upperHitIndexes.insert(i, data.HitLinkUpData( data.Row( iRow ))[(size_t)upperHitIndexes[i]]);
+#else
+            upperHitIndexes[i] = data.HitLinkUpData( data.Row( iRow ))[(unsigned int)upperHitIndexes[i]];
+#endif
           }
           validHitsMask &= upperHitIndexes >= int_v( 0 );
           nRows++;
@@ -104,8 +112,11 @@ void AliHLTTPCCAStartHitsFinder::run( AliHLTTPCCATracker &tracker, SliceData &da
           int iRow2 = rowIndex + 1*rowStep;
           uint_v nHits(0);
 //          nHits(goodChains) = 2;
-//          nHits = KFP::SIMD::select(goodChains, nHits, 2);
+#ifndef USE_VC
           nHits = KFP::SIMD::select(goodChains, 2, nHits);
+#else
+          nHits(goodChains) = 2;
+#endif
           AliHLTTPCCARow curRow2;
           int_v upperHitIndexes2 = middleHitIndexes;
           for (;!goodChains.isEmpty();) {
@@ -114,12 +125,19 @@ void AliHLTTPCCAStartHitsFinder::run( AliHLTTPCCATracker &tracker, SliceData &da
             data.SetHitAsUsed( curRow2, static_cast<uint_v>( upperHitIndexes2 ), goodChains );
             for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
               if( !goodChains[i] ) continue;
+#ifndef USE_VC
               upperHitIndexes2.insert(i, data.HitLinkUpData( curRow2 )[(unsigned int)upperHitIndexes2[i]]);//[i] = data.HitLinkUpData( curRow2 )[(unsigned int)upperHitIndexes2[i]];
+#else
+              upperHitIndexes2[i] = data.HitLinkUpData( curRow2 )[(unsigned int)upperHitIndexes2[i]];
+#endif
             }
             goodChains &= upperHitIndexes2 >= int_v( 0 );
 //            nHits(goodChains)++;
-//            nHits = KFP::SIMD::select(goodChains, nHits, nHits + 1);
+#ifndef USE_VC
             nHits = KFP::SIMD::select(goodChains, nHits + 1, nHits);
+#else
+            nHits(goodChains)++;
+#endif
             iRow2 += rowStep;
           }
 

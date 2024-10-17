@@ -4,8 +4,11 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # set( CMAKE_VERBOSE_MAKEFILE on )
 
-#find_package(Vc REQUIRED)
-#include_directories(${VC_INCLUDE_DIR})
+if(USE_VC)
+  find_package(Vc REQUIRED)
+  include_directories(${VC_INCLUDE_DIR})
+  add_definitions(-DUSE_VC)
+endif(USE_VC)
 
 find_package(SSE)
 #find_package(TBB REQUIRED)
@@ -346,13 +349,16 @@ if(ENABLE_ARRAY_BOUNDS_CHECKING)
 endif(ENABLE_ARRAY_BOUNDS_CHECKING)
 
 set(USE_SIMD TRUE CACHE BOOL "When compiling on x86 use SSE Vector class instead of Simple implementation")
-#if(USE_SIMD)
-## if(NOT COMPILE_FOR_MIC)
-##    add_definitions(-DVC_IMPL=SSE)
-## endif(NOT COMPILE_FOR_MIC)
-#else(USE_SIMD)
-#   add_definitions(-DVc_IMPL=Scalar)
-#endif(USE_SIMD)
+if(USE_VC)
+  if(USE_SIMD)
+# if(NOT COMPILE_FOR_MIC)
+#    add_definitions(-DVC_IMPL=SSE)
+# endif(NOT COMPILE_FOR_MIC)
+  else(USE_SIMD)
+     add_definitions(-DVc_IMPL=Scalar)
+  endif(USE_SIMD)
+endif(USE_VC)
+
 set(CATrackerCode ${CATrackerCode} code/CATracker/AliHLTTPCCASliceDataVector.cxx)
 
 set(DUMP_LINKS FALSE CACHE BOOL "dump links into Links directory after NeighboursFinder")
@@ -384,18 +390,36 @@ endif(DUMP_TC_OUTPUT)
 
    if(ENABLE_TBB)
       add_target_property(CATracker COMPILE_FLAGS "-DUSE_TBB")
-      target_link_libraries(CATracker ${TBB_RELEASE_LIBRARIES})# ${VC_LIBRARIES})
+      if(USE_VC)
+        target_link_libraries(CATracker ${TBB_RELEASE_LIBRARIES} ${VC_LIBRARIES})
+      else(USE_VC)
+        target_link_libraries(CATracker ${TBB_RELEASE_LIBRARIES})
+      endif(USE_VC)
 
       add_executable(CA_parallel CA_parallel.cpp ${CATrackerParallelCode})
-      target_link_libraries(CA_parallel CATracker ${TBB_RELEASE_LIBRARIES})# ${VC_LIBRARIES})
+      if(USE_VC)
+        target_link_libraries(CA_parallel CATracker ${TBB_RELEASE_LIBRARIES} ${VC_LIBRARIES})
+      else(USE_VC)
+        target_link_libraries(CA_parallel CATracker ${TBB_RELEASE_LIBRARIES})
+      endif(USE_VC)
       add_target_property(CA_parallel COMPILE_FLAGS "-DHLTCA_STANDALONE")
    else(ENABLE_TBB)
    
       add_executable(CA_parallel CA_parallel.cpp ${CATrackerParallelCode})
-      target_link_libraries(CA_parallel CATracker)# ${VC_LIBRARIES})
+      if(USE_VC)
+        target_link_libraries(CA_parallel CATracker ${VC_LIBRARIES})
+      else(USE_VC)
+        target_link_libraries(CA_parallel CATracker)
+      endif(USE_VC)
+      
       add_target_property(CA_parallel COMPILE_FLAGS "-DHLTCA_STANDALONE")
       
-      target_link_libraries(CATracker)# ${VC_LIBRARIES})
+      if(USE_VC)
+        target_link_libraries(CATracker ${VC_LIBRARIES})
+      else(USE_VC)
+        target_link_libraries(CATracker)
+      endif(USE_VC)
+      
    endif(ENABLE_TBB)
 
    add_library(CATrackerPerf ${PerformanceCode})
@@ -417,7 +441,7 @@ endif(DUMP_TC_OUTPUT)
 #   add_target_property(KFParticle COMPILE_FLAGS "-inline-forceinline")
 #   endif(CMAKE_CXX_COMPILER MATCHES "/(icpc|icc)$")
 
-   add_executable(KFP CA.cpp)
+#   add_executable(KFP CA.cpp)
 #   add_executable(KFPStandalone KFP.cpp)
 #   add_executable(KFParticleTest KFParticleTest.cpp)
 #   add_executable(KFPServer KFPServer.cpp)
@@ -428,7 +452,7 @@ if(NOT ROOT_FOUND) #	TODO KFParticle
    # compile only standalone CA
 
       add_executable(KFP_parallel CA_parallel.cpp ${CATrackerParallelCode})
-      target_link_libraries(KFP_parallel CATracker KFParticle)
+#      target_link_libraries(KFP_parallel CATracker KFParticle)
       add_target_property(KFP_parallel COMPILE_FLAGS "-DHLTCA_STANDALONE -DKFPARTICLE -DKFPWITHTRACKER -DHomogeneousField -DKFParticleStandalone")
       
       
@@ -442,8 +466,8 @@ if(NOT ROOT_FOUND) #	TODO KFParticle
    
 #   add_target_property(KFParticle COMPILE_FLAGS "-DHLTCA_STANDALONE -DKFPARTICLE -DKFPWITHTRACKER -DHomogeneousField -DKFParticleStandalone")
    
-   target_link_libraries(KFP CATracker KFParticle)
-   add_target_property(KFP COMPILE_FLAGS "-DHLTCA_STANDALONE -DKFPARTICLE -DKFPWITHTRACKER -DHomogeneousField -DKFParticleStandalone")
+#   target_link_libraries(KFP CATracker KFParticle)
+#   add_target_property(KFP COMPILE_FLAGS "-DHLTCA_STANDALONE -DKFPARTICLE -DKFPWITHTRACKER -DHomogeneousField -DKFParticleStandalone")
 
 #   target_link_libraries(KFParticleTest CATracker KFParticle)
 #   add_target_property(KFParticleTest COMPILE_FLAGS "-DHLTCA_STANDALONE -DKFPARTICLE -DKFPWITHTRACKER -DHomogeneousField -DKFParticleStandalone")

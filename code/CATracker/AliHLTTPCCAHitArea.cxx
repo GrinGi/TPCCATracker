@@ -31,8 +31,13 @@
 AliHLTTPCCAHitArea::AliHLTTPCCAHitArea( const AliHLTTPCCARow &row, const AliHLTTPCCASliceData &slice,
     const float_v &y, const float_v &z, float dy, float dz, int_m mask )
   : fRow( row ), fSlice( slice ),
-  fHitYlst( 0 ),
-  fIh( 0 ),
+#ifndef USE_VC
+  fHitYlst( uint_v( 0 ) ),
+  fIh( uint_v( 0 ) ),
+#else
+  fHitYlst( Vc::Zero ),
+  fIh( Vc::Zero ),
+#endif
   fNy( fRow.Grid().Ny() )
 {
   const AliHLTTPCCAGrid &grid = fRow.Grid();
@@ -61,10 +66,17 @@ AliHLTTPCCAHitArea::AliHLTTPCCAHitArea( const AliHLTTPCCARow &row, const AliHLTT
 //    fBDY.setZero( invalidMask );
 //    fIndYmin.setZero( invalidMask );
 //    fIz.setZero( invalidMask );
+#ifndef USE_VC
     fBZmax = KFP::SIMD::select( invalidMask, 0, fBZmax );
     fBDY = KFP::SIMD::select( invalidMask, 0, fBDY );
     fIndYmin = KFP::SIMD::select( invalidMask, 0, fIndYmin );
     fIz = KFP::SIMD::select( invalidMask, 0, fIz );
+#else
+    fBZmax( invalidMask ) = int_v( 0 );
+    fBDY( invalidMask ) = int_v( 0 );
+    fIndYmin( invalidMask ) = int_v( 0 );
+    fIz( invalidMask ) = int_v( 0 );
+#endif
 
       // for given fIz (which is min atm.) get
 #ifdef VC_GATHER_SCATTER
@@ -73,10 +85,13 @@ AliHLTTPCCAHitArea::AliHLTTPCCAHitArea( const AliHLTTPCCARow &row, const AliHLTT
 #else
     for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
       if( !mask[i] ) continue;
+#ifndef USE_VC
       fIh.insert( i, (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)fIndYmin[i]] );
-//      [i] = (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)fIndYmin[i]];
       fHitYlst.insert( i, (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)(fIndYmin[i] + fBDY[i])] );
-//      [i] = (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)(fIndYmin[i] + fBDY[i])];
+#else
+      fIh[i] = (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)fIndYmin[i]];
+      fHitYlst[i] = (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)(fIndYmin[i] + fBDY[i])];
+#endif
     }
 #endif
   } else {
@@ -122,22 +137,33 @@ uint_m AliHLTTPCCAHitArea::GetNext( NeighbourData *data )
   while ( !needNextZ.isEmpty() ) {
     
 //    ++fIz( needNextZ );
+#ifndef USE_VC
     fIz = KFP::SIMD::select( needNextZ, fIz + 1, fIz );
+#else
+    ++fIz( needNextZ );
+#endif
     nextZIndexOutOfRange = fIz >= fBZmax;
     
       // get next hit
 //    fIndYmin( needNextZ ) += fNy;
+#ifndef USE_VC
     fIndYmin = KFP::SIMD::select( needNextZ, fIndYmin + fNy, fIndYmin );
+#else
+    fIndYmin( needNextZ ) += fNy;
+#endif
 #ifdef VC_GATHER_SCATTER
     fIh.gather( fSlice.FirstUnusedHitInBin( fRow ), fIndYmin, needNextZ ); // get first hit in cell, if z-line is new
     fHitYlst.gather( fSlice.FirstUnusedHitInBin( fRow ), fIndYmin + fBDY, needNextZ );
 #else
     for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
       if( !needNextZ[i] ) continue;
+#ifndef USE_VC
       fIh.insert( i, (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)fIndYmin[i]] );
-//      [i] = (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)fIndYmin[i]];
       fHitYlst.insert( i, (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)(fIndYmin[i] + fBDY[i])] );
-//      [i] = (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)(fIndYmin[i] + fBDY[i])];
+#else
+      fIh[i] = (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)fIndYmin[i]];
+      fHitYlst[i] = (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)(fIndYmin[i] + fBDY[i])];
+#endif
     }
 #endif
     assert( (fHitYlst <= fRow.NUnusedHits() || !needNextZ).isFull() );
@@ -174,22 +200,36 @@ uint_v AliHLTTPCCAHitArea::NHits()
   while ( !needNextZ.isEmpty() ) {
 //    ++iz( needNextZ );   // get new z-line
 //    indYmin( needNextZ ) += fNy;
+#ifndef USE_VC
     iz = KFP::SIMD::select (needNextZ, iz + 1, iz);
     indYmin = KFP::SIMD::select (needNextZ, indYmin + fNy, indYmin);
+#else
+    ++iz( needNextZ );
+    indYmin( needNextZ ) += fNy;
+#endif
+
 #ifdef VC_GATHER_SCATTER
     ih.gather( fSlice.FirstUnusedHitInBin( fRow ), indYmin, needNextZ ); // get first hit in cell, if z-line is new
     hitYlst.gather( fSlice.FirstUnusedHitInBin( fRow ), indYmin + fBDY, needNextZ );
 #else
     for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
       if( !needNextZ[i] ) continue;
+#ifndef USE_VC
       ih.insert( i, (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)indYmin[i]] );
-//      [i] = (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)indYmin[i]];
       hitYlst.insert( i, (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)(indYmin[i] + fBDY[i])] );
+#else
+      ih[i] = (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)indYmin[i]];
+      hitYlst[i] = (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)(indYmin[i] + fBDY[i])];
+#endif
 //      [i] = (int)fSlice.FirstUnusedHitInBin( fRow )[(unsigned int)(indYmin[i] + fBDY[i])];
     }
 #endif
 //    nHits( needNextZ ) += hitYlst - ih;
+#ifndef USE_VC
     nHits = KFP::SIMD::select (needNextZ, nHits + hitYlst - ih, nHits);
+#else
+    nHits( needNextZ ) += hitYlst - ih;
+#endif
     
     needNextZ = iz < fBZmax;
   }

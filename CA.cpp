@@ -95,6 +95,11 @@ static void usage(const char *execName)
 int main(int argc, char **argv)
 {
   bool fullTiming = false;
+  //
+#ifdef HLTCA_STANDALONE
+  std::cout<<"<<<HLTCA_STANDALONE>>>\n";
+#endif
+  //
 
   AliHLTTPCCAPerformance *perf = 0;
 #ifndef HLTCA_STANDALONE

@@ -77,9 +77,28 @@ class AliHLTTPCCASliceTrackVector
     int_v FirstClusterRef()              const { return fFirstClusterRef; }
 
     void SetNClusters( int_v v )                   { fNClusters = v;       }
+#ifndef USE_VC
     void SetNClusters( int i, int v )                   { fNClusters.insert(i, v); }//[i] = v;       }
-    void SetFirstClusterRef( int_v v )              { fFirstClusterRef = v; }
     void SetFirstClusterRef( int i, int n )              { fFirstClusterRef.insert(i, n); }//[i] = n; }
+    void SetUsed( int i, int n )				{ fUsed.insert(i, n); }//[i] = n;         }
+    void SetActive( int i, bool m )				{ fActive.insert(i, m); }//[i] = m; 	}
+    void SetInnerRow( int i, int n ) { fInnerRow.insert(i, n); }//[i] = n; }
+    void SetNSegments( int n, int iv ) { fNSegments.insert(n, iv); }//[iv] = n; }
+    void SetNClustersSeg( int s, int n, int iv )                   { fNClustersSeg[n].insert(iv, s); }//[iv] = s;       }
+    void SetFirstClusterRefSeg( int s, int n, int iv )              { fFirstClusterRefSeg[n].insert(iv, s); }//[iv] = s; }
+    void SetSliceSeg( int s, int n, int iv )                   { fSliceSeg[n].insert(iv, s); }//[iv] = s;       }
+#else
+    void SetNClusters( int i, int v )                   { fNClusters[i] = v;       }
+    void SetFirstClusterRef( int i, int n )              { fFirstClusterRef[i] = n; }
+    void SetUsed( int i, int n )				{ fUsed[i] = n;         }
+    void SetActive( int i, bool m )				{ fActive[i] = m; 	}
+    void SetInnerRow( int i, int n ) { fInnerRow[i] = n; }
+    void SetNSegments( int n, int iv ) { fNSegments[iv] = n; }
+    void SetNClustersSeg( int s, int n, int iv )                   { fNClustersSeg[n][iv] = s;       }
+    void SetFirstClusterRefSeg( int s, int n, int iv )              { fFirstClusterRefSeg[n][iv] = s; }
+    void SetSliceSeg( int s, int n, int iv )                   { fSliceSeg[n][iv] = s;       }
+#endif
+    void SetFirstClusterRef( int_v v )              { fFirstClusterRef = v; }
 
     int_v Used()         const { return fUsed;            }
     int_m Active()	 const { return fActive;	  }
@@ -95,20 +114,11 @@ class AliHLTTPCCASliceTrackVector
     void SetOuterAlpha( float_v v )				{ fOuterAlpha = v;      }
 #endif
     void SetUsed( int_v v )					{ fUsed = v;            }
-    void SetUsed( int i, int n )				{ fUsed.insert(i, n); }//[i] = n;         }
     void SetActive( int_m m )					{ fActive = m; 		}
-    void SetActive( int i, bool m )				{ fActive.insert(i, m); }//[i] = m; 	}
-
-    void SetInnerRow( int i, int n ) { fInnerRow.insert(i, n); }//[i] = n; }
-
-    void SetNSegments( int n, int iv ) { fNSegments.insert(n, iv); }//[iv] = n; }
     int NSegments( int iv ) { return fNSegments[iv]; }
     int NSegments( int iv ) const { return fNSegments[iv]; }
-    void SetNClustersSeg( int s, int n, int iv )                   { fNClustersSeg[n].insert(iv, s); }//[iv] = s;       }
-    void SetFirstClusterRefSeg( int s, int n, int iv )              { fFirstClusterRefSeg[n].insert(iv, s); }//[iv] = s; }
     int NClustersSeg( int n, int iv )                    const { return fNClustersSeg[n][iv];       }
     int FirstClusterRefSeg( int n, int iv )              const { return fFirstClusterRefSeg[n][iv]; }
-    void SetSliceSeg( int s, int n, int iv )                   { fSliceSeg[n].insert(iv, s); }//[iv] = s;       }
     int SliceSeg( int n, int iv )                    const { return fSliceSeg[n][iv];       }
 
   private:

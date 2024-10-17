@@ -660,7 +660,11 @@ void AliHLTTPCCAMerger::UnpackSlices()
       {
         const AliHLTTPCCASliceTrack &sTrack = slice.Track( itr + iV );
 
+#ifndef USE_VC
         nHits.insert(iV, 0);//= 0;
+#else
+        nHits[iV] = 0;
+#endif
         for ( int iTrClu = 0; iTrClu < sTrack.NClusters(); iTrClu++ ) {
 // unpack cluster information
           AliHLTTPCCAClusterInfo &clu = fClusterInfos[nClustersCurrent + nCluNew + (unsigned int)nHits[iV]];
@@ -675,13 +679,25 @@ void AliHLTTPCCAMerger::UnpackSlices()
           clu.SetZ( yz.y );
           hits[iTrClu][iV] = nClustersCurrent + nCluNew + iTrClu;
 //          nHits[iV]++;
+#ifndef USE_VC
           nHits.insert(iV, nHits[iV] + 1);
+#else
+          nHits[iV]++;
+#endif
         }
         nCluNew += nHits[iV];
 
         pStartPoint[iV] = &sTrack.Param();
+#ifndef USE_VC
         startAlpha.insert(iV, slices[iSlice]->Param().Alpha());//[iV] = slices[iSlice]->Param().Alpha();
+#else
+        startAlpha[iV] = slices[iSlice]->Param().Alpha();
+#endif
+#ifndef USE_VC
         endAlpha.insert(iV, startAlpha[iV]);//[iV]   = startAlpha[iV];
+#else
+        endAlpha[iV] = startAlpha[iV];
+#endif
       }
 
         //when we turn off the extrapolation step in the tracklet constructor, we have parameters in the last point, not in the first!
@@ -788,7 +804,11 @@ float_m AliHLTTPCCAMerger::FitTrack( AliHLTTPCCATrackParamVector &t, float_v &Al
 
   uint_v nHits(NTrackHits);
 //  nHits.setZero(static_cast<uint_m>(!active0));
-  nHits = KFP::SIMD::select(!active0, 0, nHits);
+#ifndef USE_VC
+  nHits = KFP::SIMD::select(!active0, uint_v( 0 ), nHits);
+#else
+  nHits( static_cast<uint_m>( !active0 ) ) = uint_v( 0 );
+#endif
 
   int nHitsMax = nHits.max();
 
@@ -808,12 +828,19 @@ float_m AliHLTTPCCAMerger::FitTrack( AliHLTTPCCATrackParamVector &t, float_v &Al
 
       const unsigned int& jhit = HitIndex( firstHits, uint_v(NTrackHits), dir, iV, ihit );
       const AliHLTTPCCAClusterInfo &h = fClusterInfos[hits[jhit][iV]];
+#ifndef USE_VC
       sliceAlphaVs[ihit].insert(iV, slices[h.ISlice()]->Param().Alpha());
-//		   [iV] =  slices[h.ISlice()]->Param().Alpha();
       xVs[ihit].insert(iV, h.X());//[iV] = h.X();
       yVs[ihit].insert(iV, h.Y());//[iV] = h.Y();
       zVs[ihit].insert(iV, h.Z());//[iV] = h.Z();
       RowVs[ihit].insert(iV, h.IRow());//[iV] = h.IRow();
+#else
+      sliceAlphaVs[ihit][iV] = slices[h.ISlice()]->Param().Alpha();
+      xVs[ihit][iV] = h.X();
+      yVs[ihit][iV] = h.Y();
+      zVs[ihit][iV] = h.Z();
+      RowVs[ihit][iV] = h.IRow();
+#endif
     }
   }
 
@@ -841,7 +868,11 @@ float_m AliHLTTPCCAMerger::FitTrack( AliHLTTPCCATrackParamVector &t, float_v &Al
     const float_v xLast = t.X();
 
 //    Alpha0V(active) = sliceAlphaV;
+#ifndef USE_VC
     Alpha0V = KFP::SIMD::select(active, sliceAlphaV, Alpha0V);
+#else
+    Alpha0V( active ) = sliceAlphaV;
+#endif
 
     const float_m &transported = t.TransportToXWithMaterial( xV, linearization, fitPar, fSliceParam.cBz( ), 0.999f, active);
     active &= transported;
@@ -869,7 +900,11 @@ float_m AliHLTTPCCAMerger::FitTrack( AliHLTTPCCATrackParamVector &t, float_v &Al
       hitsNew[(unsigned int)nHitsNew[iV]][iV] = hits[jhit][iV];
     }
 //    nHitsNew(uint_m(active))++;
+#ifndef USE_VC
     nHitsNew = KFP::SIMD::select(active, nHitsNew+1, nHitsNew);
+#else
+    nHitsNew(uint_m(active))++;
+#endif
   }
 
   float_m ok = active0 && float_m(uint_v(nHitsNew) >= 3) && t.IsNotDiverged();
@@ -1026,7 +1061,11 @@ float_m AliHLTTPCCAMerger::FitTrackMerged( AliHLTTPCCATrackParamVector &t, float
 
   uint_v nHits(NTrackHits);
 //  nHits.setZero(static_cast<uint_m>(!active0));
+#ifndef USE_VC
   nHits = KFP::SIMD::select(!active0, 0, nHits);
+#else
+  nHits( static_cast<uint_m>( !active0 ) ) = 0;
+#endif
 
   int nHitsMax = nHits.max();
 
@@ -1088,7 +1127,11 @@ float_m AliHLTTPCCAMerger::FitTrackMerged( AliHLTTPCCATrackParamVector &t, float
 #endif
 
 //    Alpha0V(active) = sliceAlphaV;
+#ifndef USE_VC
     Alpha0V = KFP::SIMD::select(active, sliceAlphaV, Alpha0V);
+#else
+    Alpha0V( active ) = sliceAlphaV;
+#endif
     const float_m &transported = t.TransportToXWithMaterial( xV, linearization, fitPar, fSliceParam.cBz( ), 0.999f, active);
 #ifndef SKIP_CALC
     active &= transported;
@@ -1112,7 +1155,11 @@ float_m AliHLTTPCCAMerger::FitTrackMerged( AliHLTTPCCATrackParamVector &t, float
     active &= filtered;
 #endif
 //    nHitsNew(uint_m(active))++;
+#ifndef USE_VC
     nHitsNew = KFP::SIMD::select(active, nHitsNew+1, nHitsNew);
+#else
+    nHitsNew(uint_m(active))++;
+#endif
   }
 
   float_m ok = active0 && float_m(uint_v(nHitsNew) >= 3) && t.IsNotDiverged();
@@ -1191,10 +1238,17 @@ float_v &minL2v, const float &bestChi2, float_v& min_chi2, float_m& active )
 //  idMin01( static_cast<int_m>(mask1lt0) ) = 1;
 //  min23  (                    mask3lt2  ) = dr2Arr[3];
 //  idMin23( static_cast<int_m>(mask3lt2) ) = 3;
+#ifndef USE_VC
   min01 = KFP::SIMD::select(mask1lt0, dr2Arr[1], min01);
   idMin01 = KFP::SIMD::select(mask1lt0, 1, idMin01);
   min23 = KFP::SIMD::select(mask3lt2, dr2Arr[3], min23);
   idMin23 = KFP::SIMD::select(mask3lt2, 3, idMin23);
+#else
+  min01  (                    mask1lt0  ) = dr2Arr[1];
+  idMin01( static_cast<int_m>(mask1lt0) ) = 1;
+  min23  (                    mask3lt2  ) = dr2Arr[3];
+  idMin23( static_cast<int_m>(mask3lt2) ) = 3;
+#endif
 
   float_v dr2(min23);
   int_v idMin(idMin23);
@@ -1203,8 +1257,13 @@ float_v &minL2v, const float &bestChi2, float_v& min_chi2, float_m& active )
     const int_m &mask01lt23 = static_cast<int_m>(min23 > min01);
 //    idMin(mask01lt23) = idMin01;
 //    dr2(float_m(mask01lt23)) = min01;
+#ifndef USE_VC
     idMin = KFP::SIMD::select(mask01lt23, idMin01, idMin);
     dr2   = KFP::SIMD::select(mask01lt23, min01, dr2);
+#else
+    idMin( mask01lt23 ) = idMin01;
+    dr2( static_cast<float_m>(mask01lt23) ) = min01;
+#endif
   }
 
   active &= float_m(idMin != 2) || float_m(number != 1); // distanse in rows between inner1 and outer2 is maximum, it can't beminimum in dr unless tracks have completely different slopes
@@ -1223,10 +1282,17 @@ float_v &minL2v, const float &bestChi2, float_v& min_chi2, float_m& active )
 //  dx( IsIdMin1 ) = dxArr[1];
 //  dx( IsIdMin2 ) = dxArr[2];
 //  dx( IsIdMin3 ) = dxArr[3];
+#ifndef USE_VC
   dx = KFP::SIMD::select(IsIdMin0, dxArr[0], dx);
   dx = KFP::SIMD::select(IsIdMin1, dxArr[1], dx);
   dx = KFP::SIMD::select(IsIdMin2, dxArr[2], dx);
   dx = KFP::SIMD::select(IsIdMin3, dxArr[3], dx);
+#else
+  dx( IsIdMin0 ) = dxArr[0];
+  dx( IsIdMin1 ) = dxArr[1];
+  dx( IsIdMin2 ) = dxArr[2];
+  dx( IsIdMin3 ) = dxArr[3];
+#endif
 
     // on the first iteration we process only overlaped tracks on second - only nonoverlaped TODO: understand how it works for already merged tracks and for tracks from different sectors
   active &= (CAMath::Abs(dx) < 0.1f) ||
@@ -1249,24 +1315,39 @@ float_v &minL2v, const float &bestChi2, float_v& min_chi2, float_m& active )
       Thelp1.SetTrackParam(OutParT2, IsIdMin0 );
 //      a1( IsIdMin0 ) = OutAlphaT1;
 //      a2( IsIdMin0 ) = OutAlphaT2;
+#ifndef USE_VC
       a1 = KFP::SIMD::select (IsIdMin0, OutAlphaT1, a1);
       a2 = KFP::SIMD::select (IsIdMin0, OutAlphaT2, a2);
+#else
+      a1( IsIdMin0 ) = OutAlphaT1;
+      a2( IsIdMin0 ) = OutAlphaT2;
+#endif
     }
     if ( !IsIdMin1.isEmpty() ) {
       Thelp.SetTrackParam(InParT1, IsIdMin1 );
       Thelp1.SetTrackParam(InParT2, IsIdMin1 );
 //      a1( IsIdMin1 ) = InAlphaT1;
 //      a2( IsIdMin1 ) = InAlphaT2;
+#ifndef USE_VC
       a1 = KFP::SIMD::select (IsIdMin1, InAlphaT1, a1);
       a2 = KFP::SIMD::select (IsIdMin1, InAlphaT2, a2);
+#else
+      a1( IsIdMin1 ) = InAlphaT1;
+      a2( IsIdMin1 ) = InAlphaT2;
+#endif
     }
     if ( !IsIdMin2.isEmpty() ) {
       Thelp.SetTrackParam(InParT1, IsIdMin2 );
       Thelp1.SetTrackParam(OutParT2, IsIdMin2 );
 //      a1( IsIdMin2 ) = InAlphaT1;
 //      a2( IsIdMin2 ) = OutAlphaT2;
+#ifndef USE_VC
       a1 = KFP::SIMD::select (IsIdMin2, InAlphaT1, a1);
       a2 = KFP::SIMD::select (IsIdMin2, OutAlphaT2, a2);
+#else
+      a1( IsIdMin2 ) = InAlphaT1;
+      a2( IsIdMin2 ) = OutAlphaT2;
+#endif
     }
   }
   if ( !IsIdMin3.isEmpty() ) {
@@ -1274,8 +1355,13 @@ float_v &minL2v, const float &bestChi2, float_v& min_chi2, float_m& active )
     Thelp1.SetTrackParam(InParT2, IsIdMin3 );
 //    a1( IsIdMin3 ) = OutAlphaT1;
 //    a2( IsIdMin3 ) = InAlphaT2;
+#ifndef USE_VC
     a1 = KFP::SIMD::select (IsIdMin3, OutAlphaT1, a1);
     a2 = KFP::SIMD::select (IsIdMin3, InAlphaT2, a2);
+#else
+    a1( IsIdMin3 ) = OutAlphaT1;
+    a2( IsIdMin3 ) = InAlphaT2;
+#endif
   }
 
     // rotate track parameters to the same coordinate system
@@ -1315,8 +1401,13 @@ float_v &minL2v, const float &bestChi2, float_v& min_chi2, float_m& active )
 
 //  min_chi2(active) = minL2v; // use minL2v with number == 1
 //  min_chi2(active && float_m(number == 0) ) = chi2;
+#ifndef USE_VC
   min_chi2 = KFP::SIMD::select(active, minL2v, min_chi2);
   min_chi2 = KFP::SIMD::select(active && float_m(number == 0), chi2, min_chi2);
+#else
+  min_chi2( active ) = minL2v;
+  min_chi2( active && float_m(number == 0) ) = chi2;
+#endif
 }
 
 void AliHLTTPCCAMerger::FindMinMaxIndex( int N2, const unsigned int FirstTrIR[], const unsigned int LastTrIR[], int minIRow, int maxIRow, int &min, int &max )
@@ -1503,10 +1594,15 @@ void AliHLTTPCCAMerger::MergeBorderTracks( AliHLTTPCCABorderTrack B1[], int N1, 
         T2OuterParamMemory[nVecElements] = &Tt2->OuterParam();
 //        T2InnerAlphaMemory[nVecElements] = Tt2->InnerAlpha();
 //        T2OuterAlphaMemory[nVecElements] = Tt2->OuterAlpha();
+#ifndef USE_VC
         T2InnerAlphaMemory.insert(nVecElements, Tt2->InnerAlpha());
         T2OuterAlphaMemory.insert(nVecElements, Tt2->OuterAlpha());
-//        b2index[nVecElements] = i2;
         b2index.insert(nVecElements, i2);
+#else
+        T2InnerAlphaMemory[nVecElements] = Tt2->InnerAlpha();
+        T2OuterAlphaMemory[nVecElements] = Tt2->OuterAlpha();
+        b2index[nVecElements] = i2;
+#endif
         nVecElements++;
       }
       if (nVecElements == 0) break;
@@ -1542,8 +1638,13 @@ void AliHLTTPCCAMerger::MergeBorderTracks( AliHLTTPCCABorderTrack B1[], int N1, 
         {// recalculate values if they could change
 //          vTt2OuterAlpha(rotate) = OutAlphaT2;
 //          vTt2InnerAlpha(rotate) = InAlphaT2;
+#ifndef USE_VC
           vTt2OuterAlpha = KFP::SIMD::select(rotate, OutAlphaT2, vTt2OuterAlpha);
           vTt2InnerAlpha = KFP::SIMD::select(rotate, InAlphaT2, vTt2InnerAlpha);
+#else
+          vTt2OuterAlpha(rotate) = OutAlphaT2;
+          vTt2InnerAlpha(rotate) = InAlphaT2;
+#endif
 
           if (number == 0) {
             float_v tmp;
@@ -2762,9 +2863,15 @@ void AliHLTTPCCAMerger::Merging(int number)
 //        StartAlpha[nVecElements] = trackOld.InnerAlpha();
 //        EndAlpha[nVecElements] = trackOld.OuterAlpha();
 //        iIndexes[nVecElements] = sI;
+#ifndef USE_VC
         StartAlpha.insert(nVecElements, trackOld.InnerAlpha());
         EndAlpha.insert(nVecElements, trackOld.OuterAlpha());
         iIndexes.insert(nVecElements, sI);
+#else
+        StartAlpha[nVecElements] = trackOld.InnerAlpha();
+        EndAlpha[nVecElements] = trackOld.OuterAlpha();
+        iIndexes[nVecElements] = sI;
+#endif
         nVecElements++;
       }
       if (nVecElements == 0) break;
@@ -2788,8 +2895,13 @@ void AliHLTTPCCAMerger::Merging(int number)
         float_v helpAlpha = vEndAlpha;
 //        vEndAlpha(invert1) = vStartAlpha;
 //        vStartAlpha(invert1) = helpAlpha;
+#ifndef USE_VC
         vEndAlpha = KFP::SIMD::select(invert1, vStartAlpha, vEndAlpha);
         vStartAlpha = KFP::SIMD::select(invert1, helpAlpha, vStartAlpha);
+#else
+        vEndAlpha(invert1) = vStartAlpha;
+        vStartAlpha(invert1) = helpAlpha;
+#endif
       }
 
       const int_m &activeI = static_cast<int_m>(active);
@@ -2797,14 +2909,22 @@ void AliHLTTPCCAMerger::Merging(int number)
       uint_v vNHits( 0 );
       for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
 	if( !activeU[i] ) continue;
+#ifndef USE_VC
 	vNHits.insert(i, fTrackInfos[(unsigned int)iIndexes[i]].NClusters());
+#else
+        vNHits[i] = fTrackInfos[(unsigned int)iIndexes[i]].NClusters();
+#endif
 //	[i] = fTrackInfos[(unsigned int)iIndexes[i]].NClusters();
       }
 
       int_v vFirstClusterRef( 0 );
       for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
       	if( !activeI[i] ) continue;
+#ifndef USE_VC
       	vFirstClusterRef.insert(i, fTrackInfos[(unsigned int)iIndexes[i]].FirstClusterRef());
+#else
+        vFirstClusterRef[i] = fTrackInfos[(unsigned int)iIndexes[i]].FirstClusterRef();
+#endif
 //	[i] = fTrackInfos[(unsigned int)iIndexes[i]].FirstClusterRef();
       }
 
@@ -2821,7 +2941,11 @@ void AliHLTTPCCAMerger::Merging(int number)
 #ifdef MERGEFIX
       segmentNumbers.push_back( iIndexes );
 //      segmentCounter( int_m( active ) )++;
+#ifndef USE_VC
       segmentCounter = KFP::SIMD::select(active, segmentCounter + 1, segmentCounter);
+#else
+      segmentCounter( int_m( active ) )++;
+#endif
 #endif
       float_m isNeighbour = active;
       while (1) // while there are still outer neighbours
@@ -2831,13 +2955,21 @@ void AliHLTTPCCAMerger::Merging(int number)
         int_v vNextNeighbour( 0 );
         for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
           if( !isNeighbourI[i] ) continue;
+#ifndef USE_VC
           vNextNeighbour.insert(i, fTrackInfos[(unsigned int)jIndexes[i]].NextNeighbour());
+#else
+          vNextNeighbour[i] = fTrackInfos[(unsigned int)jIndexes[i]].NextNeighbour();
+#endif
 //	  [i] = fTrackInfos[(unsigned int)jIndexes[i]].NextNeighbour();
         }
         uint_v vSliceNextNeighbour( 0 );
         for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
           if( !isNeighbourU[i] ) continue;
+#ifndef USE_VC
           vSliceNextNeighbour.insert(i, fTrackInfos[(unsigned int)jIndexes[i]].SliceNextNeighbour());
+#else
+          vSliceNextNeighbour[i] = fTrackInfos[(unsigned int)jIndexes[i]].SliceNextNeighbour();
+#endif
 //	  [i] = fTrackInfos[(unsigned int)jIndexes[i]].SliceNextNeighbour();
         }
 
@@ -2848,14 +2980,22 @@ void AliHLTTPCCAMerger::Merging(int number)
         const int_m &isNeighbourI0 = static_cast<int_m>(isNeighbour);
         for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
           if( !isNeighbourI0[i] ) continue;
+#ifndef USE_VC
           jIndexes.insert(i, fSliceTrackInfoStart[(unsigned int)vSliceNextNeighbour[i]]);
+#else
+          jIndexes[i] = fSliceTrackInfoStart[(unsigned int)vSliceNextNeighbour[i]];
+#endif
 //	  [i] = fSliceTrackInfoStart[(unsigned int)vSliceNextNeighbour[i]];
         }
         jIndexes += vNextNeighbour;
         int_v vUsed( 0 );
         for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
           if( !isNeighbourI0[i] ) continue;
+#ifndef USE_VC
           vUsed.insert(i, fTrackInfos[(unsigned int)jIndexes[i]].Used());
+#else
+          vUsed[i] = fTrackInfos[(unsigned int)jIndexes[i]].Used();
+#endif
 //	  [i] = fTrackInfos[(unsigned int)jIndexes[i]].Used();
         }
 
@@ -2868,7 +3008,11 @@ void AliHLTTPCCAMerger::Merging(int number)
 #ifdef MERGEFIX
         segmentNumbers.push_back( jIndexes );
 //        segmentCounter( int_m( isNeighbour ) )++;
+#ifndef USE_VC
         segmentCounter = KFP::SIMD::select(isNeighbour, segmentCounter + 1, segmentCounter);
+#else
+        segmentCounter( int_m( isNeighbour ) )++;
+#endif
 #endif
       } // while isNeighbour
 
@@ -2879,7 +3023,11 @@ void AliHLTTPCCAMerger::Merging(int number)
           for ( unsigned int i = 0; i < (unsigned int)vNHits[iV]; i++ ) hits[i][iV] = hits[(unsigned int)(firstHit[iV]+vNHits[iV]-1-i)][iV];
         }
 //        firstHit(uint_m(swap)) = uint_v( 0 );
+#ifndef USE_VC
         firstHit = KFP::SIMD::select(swap, uint_v( 0 ), firstHit);
+#else
+        firstHit( uint_m( swap ) ) = uint_v( 0 );
+#endif
 
         AliHLTTPCCATrackParamVector helpPoint = vEndPoint;
         vEndPoint.SetTrackParam(vStartPoint, swap);
@@ -2887,8 +3035,13 @@ void AliHLTTPCCAMerger::Merging(int number)
         float_v helpAlpha = vEndAlpha;
 //        vEndAlpha(swap) = vStartAlpha;
 //        vStartAlpha(swap) = helpAlpha;
+#ifndef USE_VC
 	vEndAlpha   = KFP::SIMD::select (swap, vStartAlpha, vEndAlpha);
 	vStartAlpha = KFP::SIMD::select (swap, helpAlpha, vStartAlpha);
+#else
+        vEndAlpha(swap) = vStartAlpha;
+        vStartAlpha(swap) = helpAlpha;
+#endif
       }
 
         // Refit tracks, which have been merged.
@@ -2927,7 +3080,11 @@ void AliHLTTPCCAMerger::Merging(int number)
           if( ISUNLIKELY(     ihit2  != ihit      ) )
             usedHits[ihit2] = usedHits[ihit];
         }
+#ifndef USE_VC
         nHits.insert(iV, ihit2+1);//[iV] = ihit2+1;
+#else
+        nHits[iV] = ihit2+1;
+#endif
 
           // on the final stage stor data to the global tracker
         if(number == 0)
@@ -3046,16 +3203,28 @@ int hits[2000][SimdSizeInt], uint_v& firstHit, AliHLTTPCCATrackParamVector& vSta
   uint_v jNHits( 0 );
   for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
     if( !maskU[i] ) continue;
+#ifndef USE_VC
     jNHits.insert(i, fTrackInfos[(unsigned int)jIndexes[i]].NClusters());
+#else
+    jNHits[i] = fTrackInfos[(unsigned int)jIndexes[i]].NClusters();
+#endif
 //    [i] = fTrackInfos[(unsigned int)jIndexes[i]].NClusters();
   }
   float_v vInnerAlpha( 0.f );
   float_v vOuterAlpha( 0.f );
   for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
     if( !mask[i] ) continue;
+#ifndef USE_VC
     vInnerAlpha.insert(i, fTrackInfos[(unsigned int)jIndexes[i]].InnerAlpha());
+#else
+    vInnerAlpha[i] = fTrackInfos[(unsigned int)jIndexes[i]].InnerAlpha();
+#endif
 //    [i] = fTrackInfos[(unsigned int)jIndexes[i]].InnerAlpha();
+#ifndef USE_VC
     vOuterAlpha.insert(i, fTrackInfos[(unsigned int)jIndexes[i]].OuterAlpha());
+#else
+    vOuterAlpha[i] = fTrackInfos[(unsigned int)jIndexes[i]].OuterAlpha();
+#endif
 //    [i] = fTrackInfos[(unsigned int)jIndexes[i]].OuterAlpha();
   }
 
@@ -3129,9 +3298,15 @@ int hits[2000][SimdSizeInt], uint_v& firstHit, AliHLTTPCCATrackParamVector& vSta
 //    vStartAlpha(case1) = vOuterAlpha;
 //    firstHit(static_cast<uint_m>(case1)) -= jNHits;
 //    startHit(static_cast<uint_m>(case1)) = firstHit;
+#ifndef USE_VC
     vStartAlpha = KFP::SIMD::select(case1, vOuterAlpha, vStartAlpha);
     firstHit    = KFP::SIMD::select(case1, firstHit - vNHits, firstHit);
     startHit    = KFP::SIMD::select(case1, firstHit, startHit);
+#else
+    vStartAlpha(case1) = vOuterAlpha;
+    firstHit(static_cast<uint_m>(case1)) -= jNHits;
+    startHit(static_cast<uint_m>(case1)) = firstHit;
+#endif
   }
   if(!(case2.isEmpty()))
   {
@@ -3139,42 +3314,72 @@ int hits[2000][SimdSizeInt], uint_v& firstHit, AliHLTTPCCATrackParamVector& vSta
 //    vStartAlpha(case2) = vInnerAlpha;
 //    firstHit(static_cast<uint_m>(case2)) -= jNHits;
 //    startHit(static_cast<uint_m>(case2)) = firstHit;
+#ifndef USE_VC
     vStartAlpha = KFP::SIMD::select(case2, vInnerAlpha, vStartAlpha);
     firstHit    = KFP::SIMD::select (case2, firstHit - vNHits, firstHit);
     startHit    = KFP::SIMD::select (case2, firstHit, startHit);
+#else
+    vStartAlpha(case2) = vInnerAlpha;
+    firstHit(static_cast<uint_m>(case2)) -= jNHits;
+    startHit(static_cast<uint_m>(case2)) = firstHit;
+#endif
   }
   if(!(case3.isEmpty()))
   {
     vEndPoint.SetTrackParam( vOuterParam, case3);
 //    vEndAlpha(case3) = vOuterAlpha;
+#ifndef USE_VC
     vEndAlpha = KFP::SIMD::select(case3, vOuterAlpha, vEndAlpha);
+#else
+    vEndAlpha(case3) = vOuterAlpha;
+#endif
   }
   if(!(case4.isEmpty()))
   {
     vEndPoint.SetTrackParam( vInnerParam, case4);
 //    vEndAlpha(case4) = vInnerAlpha;
+#ifndef USE_VC
     vEndAlpha = KFP::SIMD::select(case4, vInnerAlpha, vEndAlpha);
+#else
+    vEndAlpha(case4) = vInnerAlpha;
+#endif
   }
 
   const float_m &m1 = mask && (vEndPoint.X() < vOuterParam.X());
   vEndPoint.SetTrackParam( vOuterParam, m1);
 //  vEndAlpha(m1) = vOuterAlpha;
+#ifndef USE_VC
   vEndAlpha = KFP::SIMD::select(m1, vOuterAlpha, vEndAlpha);
+#else
+  vEndAlpha(m1) = vOuterAlpha;
+#endif
 
   const float_m &m2 = mask && (vEndPoint.X() < vInnerParam.X());
   vEndPoint.SetTrackParam( vInnerParam, m2);
 //  vEndAlpha(m2) = vInnerAlpha;
+#ifndef USE_VC
   vEndAlpha = KFP::SIMD::select(m2, vInnerAlpha, vEndAlpha);
+#else
+  vEndAlpha(m2) = vInnerAlpha;
+#endif
 
   const float_m &m3 = mask && (vStartPoint.X() > vInnerParam.X());
   vStartPoint.SetTrackParam( vInnerParam, m3 );
 //  vStartAlpha(m3) = vInnerAlpha;
+#ifndef USE_VC
   vStartAlpha = KFP::SIMD::select(m3, vInnerAlpha, vStartAlpha);
+#else
+  vStartAlpha(m3) = vInnerAlpha;
+#endif
 
   const float_m &m4 = mask && (vStartPoint.X() > vOuterParam.X());
   vStartPoint.SetTrackParam( vOuterParam, m4 );
 //  vStartAlpha(m4) = vOuterAlpha;
+#ifndef USE_VC
   vStartAlpha = KFP::SIMD::select(m4, vOuterAlpha, vStartAlpha);
+#else
+  vStartAlpha(m4) = vOuterAlpha;
+#endif
 
   const float_m dir_float = (case1 || case4);
   dir = dir_float;
@@ -3182,7 +3387,11 @@ int hits[2000][SimdSizeInt], uint_v& firstHit, AliHLTTPCCATrackParamVector& vSta
   int_v jFirstClusterRef( 0 );
   for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
     if( !mask[i] ) continue;
+#ifndef USE_VC
     jFirstClusterRef.insert(i, fTrackInfos[(unsigned int)jIndexes[i]].FirstClusterRef());
+#else
+    jFirstClusterRef[i] = fTrackInfos[(unsigned int)jIndexes[i]].FirstClusterRef();
+#endif
 //    [i] = fTrackInfos[(unsigned int)jIndexes[i]].FirstClusterRef();
   }
 
@@ -3195,6 +3404,10 @@ int hits[2000][SimdSizeInt], uint_v& firstHit, AliHLTTPCCATrackParamVector& vSta
     }
   }
 //  vNHits(static_cast<uint_m>(mask)) += jNHits;
+#ifndef USE_VC
   vNHits = KFP::SIMD::select(mask, vNHits + jNHits, vNHits);
+#else
+  vNHits(static_cast<uint_m>(mask)) += jNHits;
+#endif
   return mask;
 }

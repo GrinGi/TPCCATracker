@@ -23,6 +23,8 @@
 #include "AliHLTTPCCAParameters.h"
 #include "AliHLTTPCCATrackParamVector.h"
 
+#include <array>
+
 #include "debug.h"
 
 //#ifndef NVALGRIND
@@ -51,9 +53,16 @@ class AliHLTTPCCATrackletVector
     void SetLastRow ( const uint_v &x ) { fLastRow  = x; }
     void SetParam   ( const TrackParamVector &x ) { fParam = x; }
 
+#ifndef USE_VC
     void SetNHits   ( const uint_v &x, uint_m mask ) { fNHits = KFP::SIMD::select(mask, x, fNHits); }
     void SetFirstRow( const uint_v &x, uint_m mask ) { fFirstRow = KFP::SIMD::select(mask, x, fFirstRow); }
     void SetLastRow ( const uint_v &x, uint_m mask  ) { fLastRow = KFP::SIMD::select(mask, x, fLastRow); }
+#else
+    void SetNHits   ( const uint_v &x, uint_m mask ) { fNHits(mask) = x; }
+    void SetFirstRow( const uint_v &x, uint_m mask ) { fFirstRow(mask) = x; }
+    void SetLastRow ( const uint_v &x, uint_m mask  ) { fLastRow(mask) = x; }
+#endif
+
     void SetParam   ( const TrackParamVector &x, float_m mask  );
 
     void SetRowHits( int rowIndex, const uint_v &trackIndex, const uint_v &hitIndex );
@@ -69,8 +78,11 @@ class AliHLTTPCCATrackletVector
     uint_v fFirstRow;   // first TPC row
     uint_v fLastRow;    // last TPC row
     TrackParamVector fParam;   // tracklet parameters
-//    Vc::array< Vc::array<unsigned int, uint_v::Size>, AliHLTTPCCAParameters::MaxNumberOfRows8 > fRowHits; // hit index for each TPC row
+#ifdef USE_VC
+    Vc::array< Vc::array<unsigned int, uint_v::Size>, AliHLTTPCCAParameters::MaxNumberOfRows8 > fRowHits; // hit index for each TPC row
+#else
     std::array< std::array<int, SimdSizeInt>, AliHLTTPCCAParameters::MaxNumberOfRows8 > fRowHits; // hit index for each TPC row	//TODO: check performance
+#endif
 };
 
 inline void AliHLTTPCCATrackletVector::SetParam( const TrackParamVector &x, float_m mask )

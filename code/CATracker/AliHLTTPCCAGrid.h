@@ -102,8 +102,13 @@ inline void AliHLTTPCCAGrid::GetBinBounded( const float_v &Y, const float_v &Z, 
   const int_v &yBin = static_cast<int_v>( Y * fStepYInv - fYMinOverStep );
   const int_v &zBin = static_cast<int_v>( Z * fStepZInv - fZMinOverStep );
 
-  *bY = CAMath::Max( int_v( 0 ), static_cast<uint_v>( CAMath::Min( int_v( fNy - 1 ), yBin ) ) );
-  *bZ = CAMath::Max( int_v( 0 ), static_cast<uint_v>( CAMath::Min( int_v( fNz - 1 ), zBin ) ) );
+#ifndef USE_VC
+  *bY = CAMath::Max( uint_v( 0 ), static_cast<uint_v>( CAMath::Min( int_v( fNy - 1 ), yBin ) ) );
+  *bZ = CAMath::Max( uint_v( 0 ), static_cast<uint_v>( CAMath::Min( int_v( fNz - 1 ), zBin ) ) );
+#else
+  *bY = CAMath::Max( int_v( Vc::Zero ), CAMath::Min( int_v( fNy - 1 ), yBin ) ).staticCast<uint_v>();
+  *bZ = CAMath::Max( int_v( Vc::Zero ), CAMath::Min( int_v( fNz - 1 ), zBin ) ).staticCast<uint_v>();
+#endif
 //  for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {	//TODO: GK: check the correctness if working with int instead of uint
 //    (*bY)[i] = (int)(*bY)[i];
 //    (*bZ)[i] = (int)(*bZ)[i];

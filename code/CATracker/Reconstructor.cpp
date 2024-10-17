@@ -160,7 +160,11 @@ int AliHLTTPCCATracker::Reconstructor::execute()
       const uint_v hitIndexes = IndexesFromZeroInt/*( Vc::IndexesFromZero )*/ + i;
       int_v usedTemp;
       for( unsigned int j = 0; j < SimdSizeFloat; j++ ) {
+#ifndef USE_VC
 	usedTemp.insert(j, d->fData.HitDataIsUsed( row )[hitIndexes[j]]);
+#else
+        usedTemp[j] = d->fData.HitDataIsUsed( row )[(unsigned int)hitIndexes[j]];
+#endif
 //	[j] = d->fData.HitDataIsUsed( row )[(unsigned int)hitIndexes[j]];
       }
       const int_m validHitsMask = (hitIndexes < numberOfHits) && (usedTemp == int_v( 0 ));

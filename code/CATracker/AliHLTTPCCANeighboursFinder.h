@@ -45,11 +45,11 @@ class AliHLTTPCCATracker::NeighboursFinder
     class ExecuteOnRow;
     NeighboursFinder( AliHLTTPCCATracker *tracker, SliceData &sliceData, int iIter ) : fTracker( tracker ), fData( sliceData ), fIter(iIter) {}
     void execute();
-  
+
 #ifdef USE_TBB
     void operator()( const tbb::blocked_range<int> &r ) const;
 #endif //USE_TBB
-  
+
   private:
     void executeOnRow( int rowIndex ) const;
 #if 0
@@ -81,7 +81,7 @@ inline void AliHLTTPCCATracker::NeighboursFinder::executeOnRow( int rowIndex ) c
   const AliHLTTPCCARow &rowUp = fData.Row( rowIndex + rowStep );
   const AliHLTTPCCARow &rowDn = fData.Row( rowIndex - rowStep );
 
-  
+
   const unsigned int numberOfHits = row.NUnusedHits();
   const unsigned int numberOfHitsUp = rowUp.NUnusedHits();
   const unsigned int numberOfHitsDown = rowDn.NUnusedHits();
@@ -104,7 +104,7 @@ inline void AliHLTTPCCATracker::NeighboursFinder::executeOnRow( int rowIndex ) c
   const float DnDx = xDn - x;
   const float UpTx = xUp / x;
   const float DnTx = xDn / x;
-  
+
   // UpTx/DnTx is used to move the HitArea such that central events are preferred (i.e. vertices
   // coming from y = 0, z = 0).
 
@@ -137,14 +137,14 @@ inline void AliHLTTPCCATracker::NeighboursFinder::executeOnRow( int rowIndex ) c
   if( fTracker->Param().NRows() > 45 ) koeff = 3.5;
 #endif
 //#define USE_CURV_CUT // TODO don't work, problem with error estimation
-#ifdef USE_CURV_CUT  
+#ifdef USE_CURV_CUT
   float curv2Cut =  AliHLTTPCCAParameters::NeighbourCurvCut[fIter] * .5 * ( UpDx * DnDx * ( UpDx - DnDx ) ); // max curv^2*(dx1*dx2*(dx1+dx2))^2 = (dslopeY^2+dslopeZ^2)*(dx1*dx2)^2 = (dy1*dx2-dy2*dx1)^2+(dz1*dx2-dz2*dx1)^2
   curv2Cut *= curv2Cut;
   const float UpErr2 = (rowIndex - rowStep < AliHLTTPCCAParameters::NumberOfInnerRows) ? 0.06*0.06 : 0.12*0.12,
               DnErr2 = (rowIndex + rowStep < AliHLTTPCCAParameters::NumberOfInnerRows) ? 0.06*0.06 : 0.12*0.12;
-#else // USE_CURV_CUT  
+#else // USE_CURV_CUT
   const float chi2Cut = AliHLTTPCCAParameters::NeighbourChiCut[fIter]*AliHLTTPCCAParameters::NeighbourChiCut[fIter] * 4.f * ( UpDx * UpDx + DnDx * DnDx ) * koeff;
-#endif // USE_CURV_CUT  
+#endif // USE_CURV_CUT
   // some step sizes on the current row. the uints in hits multiplied with the step size give
   // the offset on the grid
 
@@ -160,18 +160,18 @@ inline void AliHLTTPCCATracker::NeighboursFinder::executeOnRow( int rowIndex ) c
 #ifdef DRAW_NEIGHBOURSFINDING
     float_v neighUpY[kMaxN];
     float_v neighUpZ[kMaxN];
-#endif      
+#endif
 
     uint_v hitIndexes( IndexesFromZeroInt/*(Vc::IndexesFromZero)*/ + hitIndex );
     const int_m &validHitsMask = hitIndexes < numberOfHits;
-    
+
       // WARNING: there is very similar code above.
     // coordinates of the hit in the current row
     float_v y( 0.f ), z( 0.f ), yUp( 0.f ), zUp( 0.f ), yDn( 0.f ), zDn( 0.f );
-    
+
     y = fData.UnusedHitPDataY( row, hitIndexes, static_cast<float_m>(validHitsMask) );
     z = fData.UnusedHitPDataZ( row, hitIndexes, static_cast<float_m>(validHitsMask) );
-    
+
 #ifdef DRAW_NEIGHBOURSFINDING
     std::cout << " centr y = " << y << " centr z = " << z << std::endl;
 #endif
@@ -199,12 +199,16 @@ inline void AliHLTTPCCATracker::NeighboursFinder::executeOnRow( int rowIndex ) c
 #ifdef DRAW_NEIGHBOURSFINDING
       neighUpY[upperNeighbourIndex] = neighUp[upperNeighbourIndex].fY;
       neighUpZ[upperNeighbourIndex] = neighUp[upperNeighbourIndex].fZ;
-#endif      
+#endif
       neighUp[upperNeighbourIndex].fY = DnDx * ( neighUp[upperNeighbourIndex].fY - y );
       neighUp[upperNeighbourIndex].fZ = DnDx * ( neighUp[upperNeighbourIndex].fZ - z );
 
 //      maxUpperNeighbourIndex(neighUp[upperNeighbourIndex].fValid)++;
+#ifndef USE_VC
       maxUpperNeighbourIndex = KFP::SIMD::select( neighUp[upperNeighbourIndex].fValid, maxUpperNeighbourIndex+1, maxUpperNeighbourIndex );
+#else
+      maxUpperNeighbourIndex(neighUp[upperNeighbourIndex].fValid)++;
+#endif
       ++upperNeighbourIndex;
 
       if ( ISUNLIKELY(upperNeighbourIndex >= kMaxN) ){
@@ -215,25 +219,25 @@ inline void AliHLTTPCCATracker::NeighboursFinder::executeOnRow( int rowIndex ) c
 
     int nNeighDn = 0;
     if ( upperNeighbourIndex <= 0 ) continue;// only if there are hits in the upper area
-     
+
     int_v bestDn(-1);
     int_v bestUp(-1);
     float_v bestD = chi2Cut; // d must be smaller than chi2Cut to be considered at all
     NeighbourData neighDn;
-    
+
       // iterate over all hits in lower area
     uint_m nextMask;
     HitArea areaDn( rowDn, fData, yDn, zDn, -DnDx*kAreaSizeY, -DnDx*kAreaSizeZ, validHitsMask );
     while ( !( nextMask = areaDn.GetNext( &neighDn ) ).isEmpty() ) {
       if ( ISUNLIKELY( ((uint_v( 0 ) < maxUpperNeighbourIndex) && neighDn.fValid).isEmpty() ) ) continue; // no both neighbours
-      
+
       assert( (neighDn.fLinks < rowDn.NUnusedHits() || !neighDn.fValid).isFull() );
 
       nNeighDn++;
 #ifdef DRAW_NEIGHBOURSFINDING
       float_v neighDnY = neighDn.fY;
       float_v neighDnZ = neighDn.fZ;
-#endif        
+#endif
         // store distance from (y,z) times UpDx
       neighDn.fY = UpDx * ( neighDn.fY - y );
       neighDn.fZ = UpDx * ( neighDn.fZ - z );
@@ -245,12 +249,16 @@ inline void AliHLTTPCCATracker::NeighboursFinder::executeOnRow( int rowIndex ) c
 
       uint_v curMaxUpperNeighbourIndex = maxUpperNeighbourIndex;
 //      curMaxUpperNeighbourIndex(!neighDn.fValid) = 0;
+#ifndef USE_VC
       curMaxUpperNeighbourIndex = KFP::SIMD::select( !neighDn.fValid, 0, curMaxUpperNeighbourIndex );
+#else
+      curMaxUpperNeighbourIndex(!neighDn.fValid) = 0;
+#endif
       const int maxMaxUpperNeighbourIndex = curMaxUpperNeighbourIndex.max();
         // for ( int i = 0; !( (uint_v(i) < maxUpperNeighbourIndex) && nextMask).isEmpty(); ++i ) { // slower
       for ( int i = 0; i < maxMaxUpperNeighbourIndex; ++i ) {
         float_m masksf( neighDn.fValid && neighUp[i].fValid ); // only store links for actually useful data.
-        
+
         const float_v dy = neighDn.fY - neighUp[i].fY;
         const float_v dz = neighDn.fZ - neighUp[i].fZ;
 #ifdef DRAW_NEIGHBOURSFINDING
@@ -268,17 +276,29 @@ inline void AliHLTTPCCATracker::NeighboursFinder::executeOnRow( int rowIndex ) c
 // WRONG NEIGHBOURS DOWU EXCLUDING FIRST - FIXED
         masksf &= d < bestD;
 //        bestD( masksf ) = d;
+#ifndef USE_VC
         bestD = KFP::SIMD::select( masksf, d, bestD );
+#else
+        bestD( masksf ) = d;
+#endif
         const int_m masks( masksf );
         dnMask |= masks;
 //        bestUp( masks ) = static_cast<int_v>(neighUp[i].fLinks);
 //        bestUp( masks ) = neighUp[i].fLinks;
+#ifndef USE_VC
         bestUp = KFP::SIMD::select( masks, neighUp[i].fLinks, bestUp );
+#else
+        bestUp( masks ) = neighUp[i].fLinks;
+#endif
         debugS() << "best up: " << masks << " " << bestUp << std::endl;
       }
 //      bestDn( dnMask ) = static_cast<int_v>(neighDn.fLinks);
 //      bestDn( dnMask ) = neighDn.fLinks;
+#ifndef USE_VC
       bestDn = KFP::SIMD::select( dnMask, neighDn.fLinks, bestDn );
+#else
+      bestDn( dnMask ) = neighDn.fLinks;
+#endif
       debugS() << "best down: " << dnMask << " " << bestDn << std::endl;
     }
 

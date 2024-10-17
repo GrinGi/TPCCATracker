@@ -236,7 +236,11 @@ inline int_v AliHLTTPCCASliceData::HitLinkUpData  ( const AliHLTTPCCARow &row, c
 {
   int_v r;
   for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
+#ifndef USE_VC
     r.insert(i,row.fLinkUpData[(unsigned int)hitIndexes[i]]);//[i] = row.fLinkUpData[(unsigned int)hitIndexes[i]];
+#else
+    r[i] = row.fLinkUpData[hitIndexes[i]];
+#endif
   }
   return r;
 }
@@ -245,7 +249,11 @@ inline int_v AliHLTTPCCASliceData::HitLinkDownData( const AliHLTTPCCARow &row, c
 {
   int_v r;
   for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
+#ifndef USE_VC
     r.insert(i, row.fLinkDownData[(unsigned int)hitIndexes[i]]);//[i] = row.fLinkDownData[(unsigned int)hitIndexes[i]];
+#else
+    r[i] = row.fLinkDownData[hitIndexes[i]];
+#endif
   }
   return r;
 }
@@ -358,8 +366,13 @@ inline void AliHLTTPCCASliceData::GetHitCoordinateVectors( const AliHLTTPCCARow 
   for( unsigned int iHv = 0; iHv < std::min(indexes.size(), SimdSizeFloat); iHv++ ) {	//TODO indexes.size() - slow!
 //    (*Y)[iHv] = row.fUnusedHitPDataY[indexes[iHv]];
 //    (*Z)[iHv] = row.fUnusedHitPDataZ[indexes[iHv]];
+#ifndef USE_VC
     (*Y).insert(iHv, row.fUnusedHitPDataY[indexes[iHv]]);
     (*Z).insert(iHv, row.fUnusedHitPDataZ[indexes[iHv]]);
+#else
+    (*Y)[iHv] = row.fUnusedHitPDataY[indexes[iHv]];
+    (*Z)[iHv] = row.fUnusedHitPDataZ[indexes[iHv]];
+#endif
   }
   (*Y) *= float_v(1e-2);
   (*Z) *= float_v(1e-2);
@@ -458,10 +471,14 @@ inline void AliHLTTPCCASliceData::CleanUsedHits( int rowIndex, bool isFirst )
     std::vector<unsigned int> unusedHitIndex(numberOfHits+1,numberOfHits);
     unsigned int iUH = 0;
     for ( unsigned int i = 0; i < numberOfHits; i += SimdSizeInt ) {
-      const uint_v hitIndexes = uint_v::iota(0)/*( Vc::IndexesFromZero )*/ + i;
+      const uint_v hitIndexes = IndexesFromZeroInt/*( Vc::IndexesFromZero )*/ + i;
       int_v hitDataTemp;
       for( unsigned int ii = 0; ii < SimdSizeFloat; ii++ ) {
+#ifndef USE_VC
 	hitDataTemp.insert(ii, HitDataIsUsed( row )[(unsigned int)hitIndexes[ii]]);//[ii] = HitDataIsUsed( row )[(unsigned int)hitIndexes[ii]];
+#else
+        hitDataTemp[ii] = HitDataIsUsed( row )[(unsigned int)hitIndexes[ii]];
+#endif
       }
       const int_m validHitsMask = (hitIndexes < numberOfHits) && ( hitDataTemp == int_v( 0 ) );
       for(unsigned int iV=0; iV<SimdSizeInt; iV++)
@@ -506,7 +523,11 @@ inline void AliHLTTPCCASliceData::CleanUsedHitsType( int rowIndex, int type )
       const uint_v hitIndexes = IndexesFromZeroInt/*( Vc::IndexesFromZero )*/ + i;
       int_v hitDataTemp;
       for( unsigned int ii = 0; ii < SimdSizeFloat; ii++ ) {
+#ifndef USE_VC
 	hitDataTemp.insert(ii, HitDataIsUsed( row )[(unsigned int)hitIndexes[ii]]);//[ii] = HitDataIsUsed( row )[(unsigned int)hitIndexes[ii]];
+#else
+        hitDataTemp[ii] = HitDataIsUsed( row )[(unsigned int)hitIndexes[ii]];
+#endif
       }
       const int_m validHitsMask = (hitIndexes < numberOfHits) && ( hitDataTemp != int_v( type ) );
       for(unsigned int iV=0; iV<SimdSizeInt; iV++)
@@ -541,7 +562,11 @@ inline float_v AliHLTTPCCASliceData::HitPDataY( const AliHLTTPCCARow &row, const
 {
   float_v r;
   for(unsigned  int i = 0; i < SimdSizeFloat; i++){
+#ifndef USE_VC
     r.insert(i, row.fHitPDataY[hitIndex + i]);//[i] = row.fHitPDataY[hitIndex + i];
+#else
+    r[i] = row.fHitPDataY[hitIndex + i];
+#endif
   }
   r *= float_v(1e-2);
   return r;
@@ -551,7 +576,11 @@ inline float_v AliHLTTPCCASliceData::HitPDataZ( const AliHLTTPCCARow &row, const
 {
   float_v r;
   for(unsigned  int i = 0; i < SimdSizeFloat; i++){
+#ifndef USE_VC
     r.insert(i, row.fHitPDataZ[hitIndex + i]);//[i] = row.fHitPDataZ[hitIndex + i];
+#else
+    r[i] = row.fHitPDataZ[hitIndex + i];
+#endif
   }
   r *= float_v(1e-2);
   return r;
@@ -563,7 +592,11 @@ inline float_v AliHLTTPCCASliceData::HitPDataY( const AliHLTTPCCARow &row, const
   for(unsigned int i=0; i<SimdSizeFloat; i++)
   {
     if(!mask[i]) continue;
+#ifndef USE_VC
     r.insert(i, row.fHitPDataY[(unsigned int)hitIndexes[i]]);//[i] = row.fHitPDataY[(unsigned int)hitIndexes[i]];
+#else
+    r[i] = row.fHitPDataY[(unsigned int)hitIndexes[i]];
+#endif
   }
   r *= float_v(1e-2);
   return r;
@@ -575,7 +608,11 @@ inline float_v AliHLTTPCCASliceData::HitPDataZ( const AliHLTTPCCARow &row, const
   for(unsigned int i=0; i<SimdSizeFloat; i++)
   {
     if(!mask[i]) continue;
+#ifndef USE_VC
     r.insert(i, row.fHitPDataZ[(unsigned int)hitIndexes[i]]);//[i] = row.fHitPDataZ[(unsigned int)hitIndexes[i]];
+#else
+    r[i] = row.fHitPDataZ[(unsigned int)hitIndexes[i]];
+#endif
   }
   r *= float_v(1e-2);
   return r;
@@ -587,7 +624,11 @@ inline float_v AliHLTTPCCASliceData::UnusedHitPDataY( const AliHLTTPCCARow &row,
   for(unsigned int i=0; i<SimdSizeFloat; i++)
   {
     if(!mask[i]) continue;
+#ifndef USE_VC
     r.insert(i, row.fUnusedHitPDataY[(unsigned int)hitIndexes[i]]);//[i] = row.fUnusedHitPDataY[(unsigned int)hitIndexes[i]];
+#else
+    r[i] = row.fUnusedHitPDataY[(unsigned int)hitIndexes[i]];
+#endif
   }
   r *= float_v(1e-2);
   return r;
@@ -599,7 +640,11 @@ inline float_v AliHLTTPCCASliceData::UnusedHitPDataZ( const AliHLTTPCCARow &row,
   for(unsigned int i=0; i<SimdSizeFloat; i++)
   {
     if(!mask[i]) continue;
+#ifndef USE_VC
     r.insert(i, row.fUnusedHitPDataZ[(unsigned int)hitIndexes[i]]);//[i] = row.fUnusedHitPDataZ[(unsigned int)hitIndexes[i]];
+#else
+    r[i] = row.fUnusedHitPDataZ[(unsigned int)hitIndexes[i]];
+#endif
   }
   r *= float_v(1e-2);
   return r;
@@ -619,7 +664,11 @@ inline uint_v AliHLTTPCCASliceData::FirstHitInBin( const AliHLTTPCCARow &row, ui
 {
   uint_v tmp;
   for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
+#ifndef USE_VC
     tmp.insert(i, row.fFirstHitInBin[(unsigned int)binIndexes[i]]);//[i] = row.fFirstHitInBin[(unsigned int)binIndexes[i]];
+#else
+    tmp[i] = row.fFirstHitInBin[(unsigned int)binIndexes[i]];
+#endif
   }
   return tmp;
 }
@@ -643,7 +692,11 @@ inline uint_v AliHLTTPCCASliceData::FirstUnusedHitInBin( const AliHLTTPCCARow &r
 {
   uint_v tmp;
   for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
+#ifndef USE_VC
     tmp.insert(i, row.fFirstUnusedHitInBin[(unsigned int)binIndexes[i]]);//[i] = row.fFirstUnusedHitInBin[(unsigned int)binIndexes[i]];
+#else
+    tmp[i] = row.fFirstUnusedHitInBin[(unsigned int)binIndexes[i]];
+#endif
   }
   return tmp;
 }
@@ -669,7 +722,11 @@ inline uint_m AliHLTTPCCASliceData::TakeOwnHits( const AliHLTTPCCARow &row,
   int_v storedWeights;
   for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
     if( !mask[i] ) continue;
+#ifndef USE_VC
     storedWeights.insert(i, row.fHitWeights[(unsigned int)hitIndex[i]]);//[i] = row.fHitWeights[(unsigned int)hitIndex[i]];
+#else
+    storedWeights[i] = row.fHitWeights[(unsigned int)hitIndex[i]];
+#endif
   }
   const uint_m own = storedWeights == weights && mask;
   const uint_v takenMarker = uint_v( std::numeric_limits<int>::max() );	//TODO: check if it works correctly
@@ -700,7 +757,11 @@ inline void AliHLTTPCCASliceData::MaximizeHitWeight( const AliHLTTPCCARow &row,
   int_v oldWeight;
   for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
     if( !mask[i] ) continue;
+#ifndef USE_VC
     oldWeight.insert(i, row.fHitWeights[(unsigned int)hitIndex[i]]);//[i] = row.fHitWeights[(unsigned int)hitIndex[i]];
+#else
+    oldWeight[i] = row.fHitWeights[(unsigned int)hitIndex[i]];
+#endif
   }
   debugF() << "scatter HitWeigths " << weight << " to " << hitIndex << ( weight > oldWeight && mask ) << " old: " << oldWeight << std::endl;
   int_m maskTemp = weight > oldWeight && mask;
@@ -724,7 +785,11 @@ inline uint_v AliHLTTPCCASliceData::HitWeight( const AliHLTTPCCARow &row, const 
   uint_v r;
   for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
     if( !mask[i] ) continue;
+#ifndef USE_VC
     r.insert(i, row.fHitWeights[(unsigned int)hitIndex[i]]);//[i] = row.fHitWeights[(unsigned int)hitIndex[i]];
+#else
+    r[i] = row.fHitWeights[(unsigned int)hitIndex[i]];
+#endif
   }
   return 0;
 }

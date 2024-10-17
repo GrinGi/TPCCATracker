@@ -109,13 +109,20 @@ void AliHLTTPCCATrackletSelector::run()
         } // if save
       } // for i
 //      nTrackHits( saveHitMask )++;
+#ifndef USE_VC
       nTrackHits = KFP::SIMD::select( saveHitMask, nTrackHits+1, nTrackHits );
-//      nTrackHits.setZero( bigGapMask && !saveHitMask );
       nTrackHits = KFP::SIMD::select( bigGapMask && !saveHitMask, 0, nTrackHits );
-//      nShared( saveHitMask && !ownHitsMask  )++;
       nShared = KFP::SIMD::select( saveHitMask && !ownHitsMask, nShared+1, nShared );
-//      gap.setZero( saveHitMask || brokenTrackMask );
       gap = KFP::SIMD::select( saveHitMask || brokenTrackMask, 0, gap );
+#else
+      nTrackHits( saveHitMask )++;
+      nTrackHits( bigGapMask && !saveHitMask ) = uint_v( 0 );
+      nShared( saveHitMask && !ownHitsMask )++;
+      gap( saveHitMask || brokenTrackMask ) = uint_v( 0 );
+#endif
+//      nTrackHits.setZero( bigGapMask && !saveHitMask );
+//      nShared( saveHitMask && !ownHitsMask  )++;
+//      gap.setZero( saveHitMask || brokenTrackMask );
     }
 
     for( unsigned int iV=0; iV<SimdSizeInt; iV++ ) {

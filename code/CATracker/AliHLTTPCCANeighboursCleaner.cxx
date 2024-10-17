@@ -62,7 +62,11 @@ void AliHLTTPCCANeighboursCleaner::run( const int numberOfRows, AliHLTTPCCASlice
       int_v hitDataTemp;
       for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
 	if( !validHitsMask[i] ) continue;
+#ifndef USE_VC
 	hitDataTemp.insert(i, data.HitDataIsUsed( row )[(unsigned int)hitIndexes[i]]);
+#else
+        hitDataTemp[i] = data.HitDataIsUsed( row )[(unsigned int)hitIndexes[i]];
+#endif
 //	[i] = data.HitDataIsUsed( row )[(unsigned int)hitIndexes[i]];
       }
       validHitsMask &= hitDataTemp == int_v( 0 );
@@ -72,7 +76,11 @@ void AliHLTTPCCANeighboursCleaner::run( const int numberOfRows, AliHLTTPCCASlice
       int_v up;
       for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
 	if( !validHitsMask[i] ) continue;
+#ifndef USE_VC
 	up.insert(i, data.HitLinkUpData( row )[(unsigned int)hitIndexes[i]]);
+#else
+        up[i] = data.HitLinkUpData( row )[(unsigned int)hitIndexes[i]];
+#endif
 //	[i] = data.HitLinkUpData( row )[(unsigned int)hitIndexes[i]];
       }
       VALGRIND_CHECK_VALUE_IS_DEFINED( up );
@@ -83,7 +91,11 @@ void AliHLTTPCCANeighboursCleaner::run( const int numberOfRows, AliHLTTPCCASlice
       int_v downFromUp( 0 );
       for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
 	if( !upMask[i] ) continue;
+#ifndef USE_VC
 	downFromUp.insert(i, data.HitLinkDownData( rowUp )[(unsigned int)upIndexes[i]]);
+#else
+        downFromUp[i] = data.HitLinkDownData( rowUp )[(unsigned int)upIndexes[i]];
+#endif
 //	[i] = data.HitLinkDownData( rowUp )[(unsigned int)upIndexes[i]];
       }
 
@@ -91,7 +103,11 @@ void AliHLTTPCCANeighboursCleaner::run( const int numberOfRows, AliHLTTPCCASlice
       int_v dn;
       for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
       	if( !validHitsMask[i] ) continue;
+#ifndef USE_VC
       	dn.insert(i, data.HitLinkDownData( row )[(unsigned int)hitIndexes[i]]);
+#else
+        dn[i] = data.HitLinkDownData( row )[(unsigned int)hitIndexes[i]];
+#endif
 //	[i] = data.HitLinkDownData( row )[(unsigned int)hitIndexes[i]];
       }
 
@@ -103,7 +119,11 @@ void AliHLTTPCCANeighboursCleaner::run( const int numberOfRows, AliHLTTPCCASlice
       int_v upFromDown( 0 );
       for( unsigned int i = 0; i < SimdSizeFloat; i++ ) {
       	if( !dnMask[i] ) continue;
+#ifndef USE_VC
       	upFromDown.insert(i, data.HitLinkUpData( rowDown )[(unsigned int)downIndexes[i]]);
+#else
+        upFromDown[i] = data.HitLinkUpData( rowDown )[(unsigned int)downIndexes[i]];
+#endif
 //	[i] = data.HitLinkUpData( rowDown )[(unsigned int)downIndexes[i]];
       }
 
@@ -233,8 +253,13 @@ void AliHLTTPCCANeighboursCleaner::run( const int numberOfRows, AliHLTTPCCASlice
         // make from good one-way links mutual links
 //      downFromUp( upMask ) = static_cast<int_v>(hitIndexes);
 //      upFromDown( dnMask ) = static_cast<int_v>(hitIndexes);
+#ifndef USE_VC
       downFromUp = KFP::SIMD::select( upMask, static_cast<int_v>(hitIndexes), downFromUp );
       upFromDown = KFP::SIMD::select( dnMask, static_cast<int_v>(hitIndexes), upFromDown );
+#else
+      downFromUp( upMask ) = static_cast<int_v>(hitIndexes);
+      upFromDown( dnMask ) = static_cast<int_v>(hitIndexes);
+#endif
       data.SetHitLinkDownData( rowUp, upIndexes, downFromUp, upMask );
       data.SetHitLinkUpData( rowDown, downIndexes, upFromDown, dnMask );
 //std::cout<<"-rowUp: "<<rowIndex + rowStep<<"; upIndexes: "<<upIndexes<<"; downFromUp: "<<downFromUp<<"; upMask: "<<upMask<<std::endl;

@@ -106,10 +106,11 @@ typedef float_v uint_v;
 typedef float_m int_m;
 typedef float_m uint_m;
 #endif
+#define SimdVectorAlignment float_v::Size
 #define SimdSizeFloat float_v::Size
 #define SimdSizeInt int_v::Size
-#define IndexesFromZeroInt Vc::IndexesFromZero()
-#define IndexesFromZeroFloat Vc::IndexesFromZero()
+#define IndexesFromZeroInt int_v::IndexesFromZero()
+#define IndexesFromZeroFloat float_v::IndexesFromZero()
 
 #else
 /*
