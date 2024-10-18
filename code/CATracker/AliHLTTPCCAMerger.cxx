@@ -1532,7 +1532,7 @@ void AliHLTTPCCAMerger::MergeBorderTracks( AliHLTTPCCABorderTrack B1[], int N1, 
             InAlphaT1( Tt1->InnerAlpha() ),  InAlphaT2;
     const AliHLTTPCCATrackParam *T2OuterParamMemory[SimdSizeInt] = {0},
                                 *T2InnerParamMemory[SimdSizeInt] = {0};
-    float_v T2InnerAlphaMemory,T2OuterAlphaMemory;
+    float_v T2InnerAlphaMemory(0.f),T2OuterAlphaMemory(0.f);
 
     for ( int i2 = ifirst2; ; ) {
       int nVecElements = 0;
