@@ -105,11 +105,19 @@ T1 min(const T2 &a, const T3 &b);
 template <typename T1, typename T2 = T1, typename T3 = T1>
 T1 max(const T2 &a, const T3 &b);
 
+///
 template <typename T1, typename T2>
 T1 min(const T2 &a);
 
 template <typename T1, typename T2>
 T1 max(const T2 &a);
+
+template <typename T> T sin(const T &val_simd);
+template <typename T> T asin(const T &val_simd);
+template <typename T> T cos(const T &val_simd);
+template <typename T> T atan_approx(const T &val_simd);
+template <typename T> T atan2(const T &val_simd1, const T &val_simd2);
+///
 
 template <typename T1, typename T2 = T1> T1 sqrt(const T2 &a);
 /* Reciprocal( inverse) Square Root */

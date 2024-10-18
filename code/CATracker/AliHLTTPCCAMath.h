@@ -49,46 +49,26 @@
 namespace CAMath
 {
   template<typename T> static inline T Min ( const T &x, const T &y ) { return std::min( x, y ); }
-
   template<typename T> static inline T Max ( const T &x, const T &y ) { return std::max( x, y ); }
-
   template<typename T> static inline T Sqrt( const T &x ) { return std::sqrt( x ); }
-
   template<typename T> static inline T RSqrt( const T &x ) { const T one = 1.; return one / std::sqrt( x ); }
-//  template<typename T> typename Vc::Vector<T> RSqrt(const Vc::Vector<T> &x) { return Vc::rsqrt( x ); }
-
   template<typename T> static inline T Abs ( const T &x ) { return std::abs( x ); }
-
   template<typename T> static inline T Log ( const T &x ) { return std::log( x ); }
-
   template<typename T> static inline T Log10( const T &x ) { return std::log10( x ); }
   template<typename T> static inline T Sin  ( const T &x ) { return std::sin( x ); }
   template<typename T> static inline T Cos  ( const T &x ) { return std::cos( x ); }
-
-//  inline float Sin( float x ) { return std::sin( x ); }
-//  inline float Cos( float x ) { return std::cos( x ); }
-//  template<> inline float_v Sin  ( const float_v &x ) { return KFP::SIMD::Detail::sin<float_v>( x ); }
-//  template<> inline float_v Cos  ( const float_v &x ) { return KFP::SIMD::Detail::cos<float_v>( x ); }
   template<typename T> static T Reciprocal( const T &x );
-//  template<typename T> typename Vc::Vector<T> Reciprocal(const Vc::Vector<T> &x) { return Vc::reciprocal( x ); }
   template<> float_v Reciprocal(const float_v &x) { return float_v( 1.f ) / x; }
   template<typename T> static T ApproxSqrt( const T &x );
 #ifdef USE_TBB
   template<typename T> static T AtomicMax( T volatile *addr, T val );
 #endif //USE_TBB
-
   template<typename T> struct FiniteReturnTypeHelper { typedef bool R; };
   template<typename T> static typename FiniteReturnTypeHelper<T>::R Finite( const T &x );
-//  template<typename T> typename Vc::Vector<T>::Mask Finite(const Vc::Vector<T> &x) { return Vc::isfinite( x ); }
-  
-
   template<typename T> static T Round( const T &x ) { return round( x ); }
-
   template<typename T> static inline T Recip( const T &x ) { return T( 1 ) / x; }
   template<typename T> static T ATan2( const T &y, const T &x ) { return atan2( y, x ); }
   template<typename T> static T ASin( const T &x ) { return asin( x ); }
-
-
 
 #ifdef USE_VC
   template<typename T> typename Vc::Vector<T> RSqrt(const Vc::Vector<T> &x) { return Vc::rsqrt( x ); }
@@ -112,6 +92,7 @@ namespace CAMath
     for( size_t i = 0; i < SimdSizeFloat; i++ ) {
       res.insert(i, std::sin(x[i]));
     }
+//    float_v res = sin(x);
     return res;
   }
   template<> inline float_v Cos (const float_v &x) {
@@ -119,6 +100,7 @@ namespace CAMath
   for( size_t i = 0; i < SimdSizeFloat; i++ ) {
     res.insert (i, std::cos (x[i]));
   }
+//  float_v res = cos(x);
   return res;
   }
   template<> inline float_v ATan2 (const float_v &y, const float_v &x) {
@@ -126,6 +108,7 @@ namespace CAMath
     for( size_t i = 0; i < SimdSizeFloat; i++ ) {
       res.insert (i, std::atan2 (y[i], x[i]));
     }
+//    float_v res = atan2(y, x);
     return res;
   }
   template<> inline float_v ASin (const float_v &x) {
@@ -133,6 +116,7 @@ namespace CAMath
     for( size_t i = 0; i < SimdSizeFloat; i++ ) {
       res.insert (i, std::asin (x[i]));
     }
+//    float_v res = asin(x);
     return res;
   }
 #endif

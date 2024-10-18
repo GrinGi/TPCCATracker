@@ -233,14 +233,33 @@ public:
                                                      b.data_.simd_) };
     }
     //
-    value_type min() const
+    ValueType min() const
     {
-        return Detail::min<value_type, simd_type>(data_.simd_);
+        return ValueType{ Detail::min<value_type, simd_type>(data_.simd_) };
+    }
+    ValueType max() const
+    {
+        return ValueType{ Detail::max<value_type, simd_type>(data_.simd_) };
     }
 
-    value_type max() const
+    friend SimdClassBase sin(const SimdClassBase& a)
     {
-        return Detail::max<value_type, simd_type>(data_.simd_);
+        return SimdClassBase{ Detail::sin<simd_type>(a.data_.simd_) };
+    }
+
+    friend SimdClassBase asin(const SimdClassBase& a)
+    {
+        return SimdClassBase{ Detail::asin<simd_type>(a.data_.simd_) };
+    }
+
+    friend SimdClassBase cos(const SimdClassBase& a)
+    {
+        return SimdClassBase{ Detail::cos<simd_type>(a.data_.simd_) };
+    }
+
+    friend SimdClassBase atan2(const SimdClassBase& x, const SimdClassBase& y)
+    {
+        return SimdClassBase{ Detail::atan2<simd_type>(x.data_.simd_, y.data_.simd_) };
     }
     //
 

@@ -325,6 +325,98 @@ inline void print<SimdDataF>(std::ostream& stream, const SimdDataF& val_simd)
            << data[3] << "]";
 }
 
+///
+const SimdDataF c1 = _mm_set1_ps(-1.0f / 6.0f);
+const SimdDataF c2 = _mm_set1_ps(1.0f / 120.0f);
+const SimdDataF c3 = _mm_set1_ps(-1.0f / 5040.0f);
+const SimdDataF pi = _mm_set1_ps(3.14159265358979323846f);
+const SimdDataF two_pi = _mm_set1_ps(6.28318530717958647692f);
+const SimdDataF half_pi = _mm_set1_ps(1.57079632679489661923f);
+const SimdDataF quarter_pi = _mm_set1_ps(0.785398163397448309616f);
+const SimdDataF cos_c1 = _mm_set1_ps(-1.0f / 2.0f);
+const SimdDataF cos_c2 = _mm_set1_ps(1.0f / 24.0f);
+const SimdDataF cos_c3 = _mm_set1_ps(-1.0f / 720.0f);
+const SimdDataF atan_c1 = _mm_set1_ps(0.9997878412794807f);
+const SimdDataF atan_c2 = _mm_set1_ps(-0.3258083974640975f);
+const SimdDataF atan_c3 = _mm_set1_ps(0.1555786518463281f);
+const SimdDataF atan_c4 = _mm_set1_ps(-0.04432655554792128f);
+const SimdDataF asin_c1 = _mm_set1_ps(1.0f / 6.0f);
+const SimdDataF asin_c2 = _mm_set1_ps(3.0f / 40.0f);
+const SimdDataF asin_c3 = _mm_set1_ps(5.0f / 112.0f);
+
+template <>
+inline SimdDataF sin<SimdDataF>(const SimdDataF& a)
+{
+  SimdDataF x = _mm_sub_ps(a, _mm_mul_ps(_mm_floor_ps(_mm_div_ps(a, two_pi)), two_pi));
+  SimdDataF x2 = _mm_mul_ps(x, x);
+  SimdDataF result = _mm_add_ps( x,
+    _mm_mul_ps(x2, _mm_add_ps( c1,
+      _mm_mul_ps(x2, _mm_add_ps( c2,
+        _mm_mul_ps(x2, c3)
+      ))
+    ))
+  );
+  return result;
+}
+
+template <>
+inline SimdDataF cos<SimdDataF>(const SimdDataF& a) {
+  SimdDataF x = _mm_sub_ps(a, _mm_mul_ps(_mm_floor_ps(_mm_div_ps(a, two_pi)), two_pi));
+  SimdDataF x2 = _mm_mul_ps(x, x);  // x^2
+  SimdDataF result = _mm_add_ps(
+    _mm_set1_ps(1.0f),
+      _mm_mul_ps(x2, _mm_add_ps( cos_c1,
+        _mm_mul_ps(x2, _mm_add_ps( cos_c2,
+          _mm_mul_ps(x2, cos_c3)
+        ))
+    ))
+  );
+  return result;
+}
+
+template <>
+inline SimdDataF atan_approx<SimdDataF>(const SimdDataF& a) {
+  SimdDataF z2 = _mm_mul_ps(a, a);
+  return _mm_add_ps(
+    _mm_mul_ps(atan_c4, z2),
+    _mm_add_ps(
+      _mm_mul_ps(atan_c3, z2),
+      _mm_add_ps(
+	_mm_mul_ps(atan_c2, z2),
+	_mm_add_ps(
+	  atan_c1,
+	  _mm_set1_ps(0.0f) ) ) ) );
+}
+
+template <>
+inline SimdDataF atan2<SimdDataF>(const SimdDataF& x, const SimdDataF& y) {
+  SimdDataF abs_x = _mm_andnot_ps(_mm_set1_ps(-0.0f), x);  // abs(x)
+  SimdDataF abs_y = _mm_andnot_ps(_mm_set1_ps(-0.0f), y);  // abs(y)
+  SimdDataF z = _mm_div_ps(abs_y, abs_x);
+  SimdDataF atan_result = atan_approx(z);
+  SimdDataF mask_x_negative = _mm_cmplt_ps(x, _mm_set1_ps(0.0f));  // x < 0
+  SimdDataF mask_y_negative = _mm_cmplt_ps(y, _mm_set1_ps(0.0f));  // y < 0
+  atan_result = _mm_add_ps(atan_result, _mm_and_ps(mask_x_negative, pi));
+  atan_result = _mm_sub_ps(atan_result, _mm_and_ps(mask_x_negative, _mm_and_ps(mask_y_negative, pi)));
+  atan_result = _mm_sub_ps(atan_result, _mm_and_ps(_mm_andnot_ps(mask_x_negative, mask_y_negative), half_pi));
+  return atan_result;
+}
+
+template <>
+inline SimdDataF asin<SimdDataF>(const SimdDataF& x) {
+  SimdDataF x2 = _mm_mul_ps(x, x);     // x^2
+  SimdDataF x3 = _mm_mul_ps(x2, x);    // x^3
+  return _mm_add_ps( x,
+    _mm_mul_ps(x3, _mm_add_ps( asin_c1,
+      _mm_mul_ps(x2,
+        _mm_add_ps( asin_c2,
+          _mm_mul_ps(x2, asin_c3)
+      ))
+    ))
+  );
+}
+///
+
 } // namespace Detail
 
 } // namespace SIMD
