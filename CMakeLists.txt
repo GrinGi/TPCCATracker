@@ -83,6 +83,11 @@ if(CMAKE_COMPILER_IS_GNUCXX)
    ##################################################################################################
    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -W -Wall -Wswitch -Wformat -Wchar-subscripts -Wno-parentheses -Wmultichar -Wtrigraphs -Wpointer-arith -Wcast-align -Wreturn-type -Wno-unused-function -ansi -pedantic -Wno-long-long -Wno-variadic-macros -Wno-unused-local-typedefs -Wshadow -fno-threadsafe-statics -fopenmp -std=c++17")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -W -Wall -Wswitch -Wformat -Wchar-subscripts -Wno-parentheses -Wmultichar -Wtrigraphs -Wpointer-arith -Wcast-align -Wreturn-type -Wno-unused-function -ansi -pedantic -Wno-long-long -Wno-variadic-macros -Wno-unused-local-typedefs -Wshadow -fno-threadsafe-statics -fopenmp -std=c++17")
+   
+   if(USE_AVX)
+     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -march=native")
+     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -march=native")
+   endif(USE_AVX)
 
    if(ENABLE_TBB)
       set(CMAKE_CXX_FLAGS_DEBUG          "${CMAKE_CXX_FLAGS_DEBUG} -DTBB_DO_ASSERT=1")
