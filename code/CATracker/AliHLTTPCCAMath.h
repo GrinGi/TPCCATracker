@@ -58,7 +58,6 @@ namespace CAMath
   template<typename T> static inline T Sin  ( const T &x ) { return std::sin( x ); }
   template<typename T> static inline T Cos  ( const T &x ) { return std::cos( x ); }
   template<typename T> static T Reciprocal( const T &x );
-  template<> float_v Reciprocal(const float_v &x) { return float_v( 1.f ) / x; }
   template<typename T> static T ApproxSqrt( const T &x );
 #ifdef USE_TBB
   template<typename T> static T AtomicMax( T volatile *addr, T val );
@@ -92,31 +91,27 @@ namespace CAMath
     for( size_t i = 0; i < SimdSizeFloat; i++ ) {
       res.insert(i, std::sin(x[i]));
     }
-//    float_v res = sin(x);
     return res;
   }
   template<> inline float_v Cos (const float_v &x) {
   float_v res;
   for( size_t i = 0; i < SimdSizeFloat; i++ ) {
-    res.insert (i, std::cos (x[i]));
+    res.insert(i, std::cos(x[i]));
   }
-//  float_v res = cos(x);
   return res;
   }
   template<> inline float_v ATan2 (const float_v &y, const float_v &x) {
     float_v res;
     for( size_t i = 0; i < SimdSizeFloat; i++ ) {
-      res.insert (i, std::atan2 (y[i], x[i]));
+      res.insert(i, std::atan2(y[i], x[i]));
     }
-//    float_v res = atan2(y, x);
     return res;
   }
   template<> inline float_v ASin (const float_v &x) {
     float_v res;
     for( size_t i = 0; i < SimdSizeFloat; i++ ) {
-      res.insert (i, std::asin (x[i]));
+      res.insert(i, std::asin(x[i]));
     }
-//    float_v res = asin(x);
     return res;
   }
 #endif
