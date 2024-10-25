@@ -118,7 +118,6 @@ typedef float_m uint_m;
  */
 #include "KFPSimd/simd.h"
 #include "KFPSimd/Base/simd_class.h"
-#include "KFPSimd/SSE/simd_sse_type.h"
 
 using float_v = KFP::SIMD::simd_float;
 using int_v   = KFP::SIMD::simd_int;
