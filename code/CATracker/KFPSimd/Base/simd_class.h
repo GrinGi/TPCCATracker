@@ -131,25 +131,25 @@ public:
     // Data elements manipulation
     // ------------------------------------------------------
     // Member function to change a single element in vector
-    SimdClassBase& insert(int index, ValueType val);
+    SimdClassBase& insert(size_t index, ValueType val);
     // Member function to change a single element in copy of vector which is returned
-    SimdClassBase insertCopy(int index, ValueType val) const;
+    SimdClassBase insertCopy(size_t index, ValueType val) const;
     // Cut off vector to n elements. The last (SimdLen - n) elements are set to zero
-    SimdClassBase& cutoff(int n);
+    SimdClassBase& cutoff(size_t n);
     // Cut off copy of vector to n elements. The last (SimdLen - n) elements are set to zero
-    SimdClassBase cutoffCopy(int n) const;
+    SimdClassBase cutoffCopy(size_t n) const;
     // Shift left elements of vector by n. The empty lanes are filled with zero.
-    SimdClassBase& shiftLeft(int n);
+    SimdClassBase& shiftLeft(size_t n);
     // Shift left elements of copy of vector by n. The empty lanes are filled with zero.
-    SimdClassBase shiftLeftCopy(int n) const;
+    SimdClassBase shiftLeftCopy(size_t n) const;
     // Shift right elements of vector by n. The empty lanes are filled with zero.
-    SimdClassBase& shiftRight(int n);
+    SimdClassBase& shiftRight(size_t n);
     // Shift right elements of copy of vector by n. The empty lanes are filled with zero.
-    SimdClassBase shiftRightCopy(int n) const;
+    SimdClassBase shiftRightCopy(size_t n) const;
     // Cyclically rotate/shift elements of vector by n.
-    SimdClassBase& rotate(int n);
+    SimdClassBase& rotate(size_t n);
     // Cyclically rotate/shift elements of copy of vector by n.
-    SimdClassBase rotateCopy(int n) const;
+    SimdClassBase rotateCopy(size_t n) const;
     // Get copy of vector with only sign bits set for each lane.
     SimdClassBase sign() const
     {

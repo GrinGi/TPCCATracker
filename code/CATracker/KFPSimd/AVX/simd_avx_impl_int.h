@@ -163,7 +163,7 @@ inline void simd_int::store_partial(int n, value_type* val_ptr) const
 {
     if (n < 1)
         return;
-    if (n > SimdLen) {
+    if (size_t(n) > SimdLen) {
         n = SimdLen;
     }
     value_type __KFP_SIMD__ATTR_ALIGN(__KFP_SIMD__Size_Int)
@@ -218,7 +218,7 @@ template <> inline simd_int::value_type simd_int::operator[](int index) const
 // ------------------------------------------------------
 // Data elements manipulation
 // ------------------------------------------------------
-template <> inline simd_int& simd_int::insert(int index, value_type val)
+template <> inline simd_int& simd_int::insert(size_t index, value_type val)
 {
     assert((index >= 0) && "[Error] (insert): invalid index. Negative");
     assert((index < SimdLen) && "[Error] (insert): invalid index. Exceeds maximum");
@@ -226,7 +226,7 @@ template <> inline simd_int& simd_int::insert(int index, value_type val)
     return *this;
 }
 
-template <> inline simd_int simd_int::insertCopy(int index, value_type val) const
+template <> inline simd_int simd_int::insertCopy(size_t index, value_type val) const
 {
     assert((index >= 0) && "[Error] (insertCopy): invalid index. Negative");
     assert((index < SimdLen) && "[Error] (insertCopy): invalid index. Exceeds maximum");
@@ -234,7 +234,7 @@ template <> inline simd_int simd_int::insertCopy(int index, value_type val) cons
     Detail::insert<simd_type, value_type>(result.data_.simd_, index & 0x07, val); // Adjusted mask to 0x07 for AVX
     return result;
 }
-template <> inline simd_int& simd_int::cutoff(int n)
+template <> inline simd_int& simd_int::cutoff(size_t n)
 {
     value_type __KFP_SIMD__ATTR_ALIGN(__KFP_SIMD__Size_Int)
         data[__KFP_SIMD__Len_Int]{}; // Helper data array
@@ -242,7 +242,7 @@ template <> inline simd_int& simd_int::cutoff(int n)
     return load_partial(n, data);
 }
 
-template <> inline simd_int simd_int::cutoffCopy(int n) const
+template <> inline simd_int simd_int::cutoffCopy(size_t n) const
 {
     value_type __KFP_SIMD__ATTR_ALIGN(__KFP_SIMD__Size_Int)
         data[__KFP_SIMD__Len_Int]{}; // Helper data array
@@ -250,38 +250,38 @@ template <> inline simd_int simd_int::cutoffCopy(int n) const
     return simd_int{}.load_partial(n, data);
 }
 
-template <> inline simd_int& simd_int::shiftLeft(int n)
+template <> inline simd_int& simd_int::shiftLeft(size_t n)
 {
     data_.simd_ = Detail::shiftLLanes<simd_type>(n, data_.simd_);
     return *this;
 }
 
-template <> inline simd_int simd_int::shiftLeftCopy(int n) const
+template <> inline simd_int simd_int::shiftLeftCopy(size_t n) const
 {
     simd_int result;
     result.data_.simd_ = Detail::shiftLLanes<simd_type>(n, data_.simd_);
     return result;
 }
 
-template <> inline simd_int& simd_int::shiftRight(int n)
+template <> inline simd_int& simd_int::shiftRight(size_t n)
 {
     data_.simd_ = Detail::shiftRLanes<simd_type>(n, data_.simd_);
     return *this;
 }
 
-template <> inline simd_int simd_int::shiftRightCopy(int n) const
+template <> inline simd_int simd_int::shiftRightCopy(size_t n) const
 {
     simd_int result;
     result.data_.simd_ = Detail::shiftRLanes<simd_type>(n, data_.simd_);
     return result;
 }
 
-template <> inline simd_int& simd_int::rotate(int n)
+template <> inline simd_int& simd_int::rotate(size_t n)
 {
     data_.simd_ = Detail::rotate<simd_type>(n & 0x07, data_.simd_); // Adjusted mask to 0x07 for AVX
     return *this;
 }
-template <> inline simd_int simd_int::rotateCopy(int n) const
+template <> inline simd_int simd_int::rotateCopy(size_t n) const
 {
     simd_int result;
     result.data_.simd_ = Detail::rotate<simd_type>(n & 0x07, data_.simd_); // Adjusted mask to 0x07 for AVX

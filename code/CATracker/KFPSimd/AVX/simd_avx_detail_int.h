@@ -269,12 +269,12 @@ __KFP_SIMD__INLINE void insert<SimdDataI, ValueDataI>(SimdDataI &val_simd, int i
 
 // Robin:
 template <>
-__KFP_SIMD__INLINE __m256i shiftLLanes<__m256i>(int n, const __m256i &val_simd) {
-  constexpr int value_size_bytes = sizeof(int);
-  constexpr int lane_count = 8; // AVX has 8 lanes for 32-bit integers
-  constexpr int total_size_bytes = lane_count * value_size_bytes;
+__KFP_SIMD__INLINE __m256i shiftLLanes<__m256i>(size_t n, const __m256i &val_simd) {
+  constexpr size_t value_size_bytes = sizeof(int);
+  constexpr size_t lane_count = 8; // AVX has 8 lanes for 32-bit integers
+//  constexpr size_t total_size_bytes = lane_count * value_size_bytes;
 
-  if (n < 0 || n >= lane_count) {
+  if (n >= lane_count) {
     return _mm256_setzero_si256();
   }
 
@@ -340,11 +340,11 @@ __KFP_SIMD__INLINE __m256i shiftLLanes<__m256i>(int n, const __m256i &val_simd) 
 
 // Robin:
 template <>
-__KFP_SIMD__INLINE __m256i rotate<__m256i>(int n, const __m256i &val_simd) {
-  constexpr int value_size_bytes = sizeof(int);
-  constexpr int lane_count = 8;
+__KFP_SIMD__INLINE __m256i rotate<__m256i>(size_t n, const __m256i &val_simd) {
+//  constexpr size_t value_size_bytes = sizeof(int);
+  constexpr size_t lane_count = 8;
 
-  if (n < 0 || n >= lane_count) {
+  if (n >= lane_count) {
     return _mm256_setzero_si256();
   }
 

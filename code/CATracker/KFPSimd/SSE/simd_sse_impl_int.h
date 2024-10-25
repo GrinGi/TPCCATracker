@@ -188,7 +188,7 @@ template <> __KFP_SIMD__INLINE simd_int::value_type simd_int::operator[](int ind
 // ------------------------------------------------------
 // Data elements manipulation
 // ------------------------------------------------------
-template <> __KFP_SIMD__INLINE simd_int& simd_int::insert(int index, value_type val)
+template <> __KFP_SIMD__INLINE simd_int& simd_int::insert(size_t index, value_type val)
 {
     assert((index > -1) && ("[Error] (insert): invalid index (" +
                             std::to_string(index) + ") given. Negative")
@@ -200,7 +200,7 @@ template <> __KFP_SIMD__INLINE simd_int& simd_int::insert(int index, value_type 
     Detail::insert<simd_type, value_type>(data_.simd_, index & 0x03, val);
     return *this;
 }
-template <> __KFP_SIMD__INLINE simd_int simd_int::insertCopy(int index, value_type val) const
+template <> __KFP_SIMD__INLINE simd_int simd_int::insertCopy(size_t index, value_type val) const
 {
     assert((index > -1) && ("[Error] (insertCopy): invalid index (" +
                             std::to_string(index) + ") given. Negative")
@@ -213,48 +213,48 @@ template <> __KFP_SIMD__INLINE simd_int simd_int::insertCopy(int index, value_ty
     Detail::insert<simd_type, value_type>(result.data_.simd_, index & 0x03, val);
     return result;
 }
-template <> __KFP_SIMD__INLINE simd_int& simd_int::cutoff(int n)
+template <> __KFP_SIMD__INLINE simd_int& simd_int::cutoff(size_t n)
 {
     __KFP_SIMD__SPEC_ALIGN(__KFP_SIMD__Size_Int) value_type
     data[__KFP_SIMD__Len_Int]{}; // Helper data array
     store_a(data);
     return load_partial(n, data);
 }
-template <> __KFP_SIMD__INLINE simd_int simd_int::cutoffCopy(int n) const
+template <> __KFP_SIMD__INLINE simd_int simd_int::cutoffCopy(size_t n) const
 {
     __KFP_SIMD__SPEC_ALIGN(__KFP_SIMD__Size_Int) value_type
     data[__KFP_SIMD__Len_Int]{}; // Helper data array
     store_a(data);
     return simd_int{}.load_partial(n, data);
 }
-template <> __KFP_SIMD__INLINE simd_int& simd_int::shiftLeft(int n)
+template <> __KFP_SIMD__INLINE simd_int& simd_int::shiftLeft(size_t n)
 {
     data_.simd_ = Detail::shiftLLanes<simd_type>(n, data_.simd_);
     return *this;
 }
-template <> __KFP_SIMD__INLINE simd_int simd_int::shiftLeftCopy(int n) const
+template <> __KFP_SIMD__INLINE simd_int simd_int::shiftLeftCopy(size_t n) const
 {
     simd_int result;
     result.data_.simd_ = Detail::shiftLLanes<simd_type>(n, data_.simd_);
     return result;
 }
-template <> __KFP_SIMD__INLINE simd_int& simd_int::shiftRight(int n)
+template <> __KFP_SIMD__INLINE simd_int& simd_int::shiftRight(size_t n)
 {
     data_.simd_ = Detail::shiftRLanes<simd_type>(n, data_.simd_);
     return *this;
 }
-template <> __KFP_SIMD__INLINE simd_int simd_int::shiftRightCopy(int n) const
+template <> __KFP_SIMD__INLINE simd_int simd_int::shiftRightCopy(size_t n) const
 {
     simd_int result;
     result.data_.simd_ = Detail::shiftRLanes<simd_type>(n, data_.simd_);
     return result;
 }
-template <> __KFP_SIMD__INLINE simd_int& simd_int::rotate(int n)
+template <> __KFP_SIMD__INLINE simd_int& simd_int::rotate(size_t n)
 {
     data_.simd_ = Detail::rotate<simd_type>(n & 0x03, data_.simd_);
     return *this;
 }
-template <> __KFP_SIMD__INLINE simd_int simd_int::rotateCopy(int n) const
+template <> __KFP_SIMD__INLINE simd_int simd_int::rotateCopy(size_t n) const
 {
     simd_int result;
     result.data_.simd_ = Detail::rotate<simd_type>(n & 0x03, data_.simd_);

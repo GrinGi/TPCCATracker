@@ -248,7 +248,7 @@ __KFP_SIMD__INLINE void insert<SimdDataI, ValueDataI>(SimdDataI& val_simd, int i
     val_simd = load_a<SimdDataI, ValueDataI>(data);
 }
 template <>
-__KFP_SIMD__INLINE SimdDataI shiftLLanes<SimdDataI>(int n, const SimdDataI &val_simd) {
+__KFP_SIMD__INLINE SimdDataI shiftLLanes<SimdDataI>(size_t n, const SimdDataI &val_simd) {
   constexpr int value_size_bytes = sizeof(int);
   switch (n) {
   case 0:
@@ -264,7 +264,7 @@ __KFP_SIMD__INLINE SimdDataI shiftLLanes<SimdDataI>(int n, const SimdDataI &val_
   }
 }
 template <>
-__KFP_SIMD__INLINE SimdDataI shiftRLanes<SimdDataI>(int n, const SimdDataI &val_simd) {
+__KFP_SIMD__INLINE SimdDataI shiftRLanes<SimdDataI>(size_t n, const SimdDataI &val_simd) {
   constexpr int value_size_bytes = sizeof(int);
   switch (n) {
   case 0:
@@ -279,7 +279,7 @@ __KFP_SIMD__INLINE SimdDataI shiftRLanes<SimdDataI>(int n, const SimdDataI &val_
     return constant<SimdDataI, ValueDataI>(0);
   }
 }
-template <> __KFP_SIMD__INLINE SimdDataI rotate<SimdDataI>(int n, const SimdDataI &val_simd) {
+template <> __KFP_SIMD__INLINE SimdDataI rotate<SimdDataI>(size_t n, const SimdDataI &val_simd) {
 #if defined(__KFP_SIMD__SSSE3) // SSSE3
   constexpr int value_size_bytes = sizeof(int);
   switch (n) {

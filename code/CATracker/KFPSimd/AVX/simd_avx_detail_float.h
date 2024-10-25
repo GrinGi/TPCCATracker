@@ -177,18 +177,18 @@ __KFP_SIMD__INLINE void insert<__m256, float>(__m256 &val_simd, int index, float
 }
 
 template <>
-__KFP_SIMD__INLINE __m256 shiftLLanes<__m256>(int amount, const __m256 &val_simd) {
+__KFP_SIMD__INLINE __m256 shiftLLanes<__m256>(size_t amount, const __m256 &val_simd) {
     __m256i tmp = _mm256_permutevar8x32_epi32(_mm256_castps_si256(val_simd), _mm256_setr_epi32((amount % 8), (1 + amount) % 8, (2 + amount) % 8, (3 + amount) % 8, (4 + amount) % 8, (5 + amount) % 8, (6 + amount) % 8, (7 + amount) % 8));
     return _mm256_castsi256_ps(tmp);
 }
 
 template <>
-__KFP_SIMD__INLINE __m256 shiftRLanes<__m256>(int amount, const __m256 &val_simd) {
+__KFP_SIMD__INLINE __m256 shiftRLanes<__m256>(size_t amount, const __m256 &val_simd) {
     __m256i tmp = _mm256_permutevar8x32_epi32(_mm256_castps_si256(val_simd), _mm256_setr_epi32((8 - amount) % 8, (9 - amount) % 8, (10 - amount) % 8, (11 - amount) % 8, (12 - amount) % 8, (13 - amount) % 8, (14 - amount) % 8, (15 - amount) % 8));
     return _mm256_castsi256_ps(tmp);
 }
 
-template <> __KFP_SIMD__INLINE __m256 rotate<__m256>(int amount, const __m256& val_simd)
+template <> __KFP_SIMD__INLINE __m256 rotate<__m256>(size_t amount, const __m256& val_simd)
 {
     __m256i tmp = _mm256_permutevar8x32_epi32(_mm256_castps_si256(val_simd), _mm256_setr_epi32(amount % 8, (1 + amount) % 8, (2 + amount) % 8, (3 + amount) % 8, (4 + amount) % 8, (5 + amount) % 8, (6 + amount) % 8, (7 + amount) % 8));
     return _mm256_castsi256_ps(tmp);

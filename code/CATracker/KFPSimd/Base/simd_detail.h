@@ -85,10 +85,10 @@ template <typename T1, typename T2> T1 extract(int index, const T2 &val_simd);
 template <typename T1, typename T2>
 void insert(T1 &val_simd, int index, T2 val);
 template <typename T1, typename T2 = T1>
-T1 shiftLLanes(int n, const T2 &val_simd);
+T1 shiftLLanes(size_t n, const T2 &val_simd);
 template <typename T1, typename T2 = T1>
-T1 shiftRLanes(int n, const T2 &val_simd);
-template <typename T1, typename T2 = T1> T1 rotate(int n, const T2 &val_simd);
+T1 shiftRLanes(size_t n, const T2 &val_simd);
+template <typename T1, typename T2 = T1> T1 rotate(size_t n, const T2 &val_simd);
 
 // ------------------------------------------------------
 // Basic Arithmetic

@@ -222,16 +222,16 @@ __KFP_SIMD__INLINE void insert<SimdDataF, ValueDataF>(SimdDataF& val_simd, int i
 #endif
 }
 template <>
-__KFP_SIMD__INLINE SimdDataF shiftLLanes<SimdDataF>(int amount, const SimdDataF &val_simd) {
+__KFP_SIMD__INLINE SimdDataF shiftLLanes<SimdDataF>(size_t amount, const SimdDataF &val_simd) {
     SimdDataI tmp = type_cast<SimdDataI, SimdDataF>(val_simd);
     return type_cast<SimdDataF, SimdDataI>(shiftLLanes<SimdDataI>(amount, tmp));
 }
 template <>
-__KFP_SIMD__INLINE SimdDataF shiftRLanes<SimdDataF>(int amount, const SimdDataF &val_simd) {
+__KFP_SIMD__INLINE SimdDataF shiftRLanes<SimdDataF>(size_t amount, const SimdDataF &val_simd) {
     SimdDataI tmp = type_cast<SimdDataI, SimdDataF>(val_simd);
     return type_cast<SimdDataF, SimdDataI>(shiftRLanes<SimdDataI>(amount, tmp));
 }
-template <> __KFP_SIMD__INLINE SimdDataF rotate<SimdDataF>(int amount, const SimdDataF& val_simd)
+template <> __KFP_SIMD__INLINE SimdDataF rotate<SimdDataF>(size_t amount, const SimdDataF& val_simd)
 {
     SimdDataI tmp = type_cast<SimdDataI, SimdDataF>(val_simd);
     return type_cast<SimdDataF, SimdDataI>(rotate<SimdDataI>(amount, tmp));

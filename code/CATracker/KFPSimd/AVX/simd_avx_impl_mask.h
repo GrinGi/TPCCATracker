@@ -140,7 +140,7 @@ template <> inline simd_float::simd_type simd_mask::maskf() const
 // ------------------------------------------------------
 // Data elements manipulation
 // ------------------------------------------------------
-template <> inline simd_mask& simd_mask::insert(int index, bool val)
+template <> inline simd_mask& simd_mask::insert(size_t index, bool val)
 {
     assert((index > -1) && ("[Error] (insert): invalid index (" +
                             std::to_string(index) + ") given. Negative")
@@ -153,7 +153,7 @@ template <> inline simd_mask& simd_mask::insert(int index, bool val)
     return *this;
 }
 
-template <> inline simd_mask simd_mask::insertCopy(int index, bool val) const
+template <> inline simd_mask simd_mask::insertCopy(size_t index, bool val) const
 {
     assert((index > -1) && ("[Error] (insertCopy): invalid index (" +
                             std::to_string(index) + ") given. Negative")
@@ -166,7 +166,7 @@ template <> inline simd_mask simd_mask::insertCopy(int index, bool val) const
     Detail::insert<simd_typei, value_typei>(result.mask_, index & 0x07, -int(val));
     return result;
 }
-template <> inline simd_mask& simd_mask::cutoff(int n)
+template <> inline simd_mask& simd_mask::cutoff(size_t n)
 {
     if(n >= SimdLen) return *this;
     value_typei __KFP_SIMD__ATTR_ALIGN(__KFP_SIMD__Size_Int)
@@ -234,7 +234,7 @@ template <> inline simd_mask& simd_mask::cutoff(int n)
     mask_ = Detail::load_a<simd_typei, value_typei>(mask);
     return *this;
 }
-template <> inline simd_mask simd_mask::cutoffCopy(int n) const
+template <> inline simd_mask simd_mask::cutoffCopy(size_t n) const
 {
     if(n >= SimdLen) return *this;
     value_typei __KFP_SIMD__ATTR_ALIGN(__KFP_SIMD__Size_Int)
