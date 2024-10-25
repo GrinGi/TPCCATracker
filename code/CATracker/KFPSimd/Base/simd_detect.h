@@ -20,19 +20,14 @@ Emails: mithran@fias.uni-frankfurt.de
 #else
     #if defined(__SSE4_2__)
     #define __KFP_SIMD__SSE4_2 1
-    #define __KFP_SIMD__SSE 1
     #elif defined(__SSE4_1__)
     #define __KFP_SIMD__SSE4_1 1
-    #define __KFP_SIMD__SSE 1
     #elif defined(__SSSE3__)
     #define __KFP_SIMD__SSSE3 1
-    #define __KFP_SIMD__SSE 1
     #elif defined(__SSE3__)
     #define __KFP_SIMD__SSE3 1
-    #define __KFP_SIMD__SSE 1
     #elif defined(__SSE2__)
     #define __KFP_SIMD__SSE2 1
-    #define __KFP_SIMD__SSE 1
     #else
     #define __KFP_SIMD__Scalar 1
     #endif
@@ -42,24 +37,18 @@ Emails: mithran@fias.uni-frankfurt.de
 
 #if __KFP_SIMD__ > 6 // AVX2 supersedes SSE
 #define __KFP_SIMD__AVX2 1
-#define __KFP_SIMD__AVX 1
 #elif __KFP_SIMD__ > 5 // AVX supersedes SSE
 #define __KFP_SIMD__AVX 1
 #elif __KFP_SIMD__ > 4
 #define __KFP_SIMD__SSE4_2 1
-#define __KFP_SIMD__SSE 1
 #elif __KFP_SIMD__ > 3
 #define __KFP_SIMD__SSE4_1 1
-#define __KFP_SIMD__SSE 1
 #elif __KFP_SIMD__ > 2
 #define __KFP_SIMD__SSSE3 1
-#define __KFP_SIMD__SSE 1
 #elif __KFP_SIMD__ > 1
 #define __KFP_SIMD__SSE3 1
-#define __KFP_SIMD__SSE 1
 #elif __KFP_SIMD__ > 0
 #define __KFP_SIMD__SSE2 1
-#define __KFP_SIMD__SSE 1
 #else
 #define __KFP_SIMD__Scalar 1
 #endif
@@ -102,5 +91,4 @@ Emails: mithran@fias.uni-frankfurt.de
 #error "[Error] (simd_detect.hpp): KFParticle SIMD implementation value SSE selected without SSE2."
 #endif
 
-#endif
-// vim: foldmethod=marker
+#endif // !SIMD_DETECT_H

@@ -43,7 +43,7 @@ public:
     // Constructors
     // ------------------------------------------------------
     // Default constructor:
-    SimdClassBase() {};
+    SimdClassBase();
     // Constructor to broadcast the same value into all elements:
     SimdClassBase(ValueType val);
     template <typename T = void,
@@ -104,7 +104,7 @@ public:
     // Note: Will generate runtime error if p is not aligned
     void store_stream(ValueType* val_ptr) const;
     // Partial store. Store n elements
-    void store_partial(size_t n, ValueType* val_ptr) const;
+    void store_partial(int n, ValueType* val_ptr) const;
 
     // ------------------------------------------------------
     // Gather and Scatter
@@ -232,6 +232,7 @@ public:
         return SimdClassBase{ Detail::max<simd_type>(a.data_.simd_,
                                                      b.data_.simd_) };
     }
+
     //
     ValueType min() const
     {
@@ -241,27 +242,6 @@ public:
     {
         return ValueType{ Detail::max<value_type, simd_type>(data_.simd_) };
     }
-
-    friend SimdClassBase sin(const SimdClassBase& a)
-    {
-        return SimdClassBase{ Detail::sin<simd_type>(a.data_.simd_) };
-    }
-
-    friend SimdClassBase asin(const SimdClassBase& a)
-    {
-        return SimdClassBase{ Detail::asin<simd_type>(a.data_.simd_) };
-    }
-
-    friend SimdClassBase cos(const SimdClassBase& a)
-    {
-        return SimdClassBase{ Detail::cos<simd_type>(a.data_.simd_) };
-    }
-
-    friend SimdClassBase atan2(const SimdClassBase& x, const SimdClassBase& y)
-    {
-        return SimdClassBase{ Detail::atan2<simd_type>(x.data_.simd_, y.data_.simd_) };
-    }
-    //
 
     friend SimdClassBase sqrt(const SimdClassBase& a)
     {
@@ -357,6 +337,54 @@ public:
     {
         return SimdMaskBase<tag>{Detail::notEqual<simd_type>(a.data_.simd_,
                                                             b.data_.simd_)};
+    }
+    friend SimdMaskBase<tag> operator<(const SimdClassBase& a, ValueType val)
+    { // mask returned
+        return (a < SimdClassBase{ val });
+    }
+    friend SimdMaskBase<tag> operator<=(const SimdClassBase& a, ValueType val)
+    { // mask returned
+        return (a <= SimdClassBase{ val });
+    }
+    friend SimdMaskBase<tag> operator>(const SimdClassBase& a, ValueType val)
+    { // mask returned
+        return (a > SimdClassBase{ val });
+    }
+    friend SimdMaskBase<tag> operator>=(const SimdClassBase& a, ValueType val)
+    { // mask returned
+        return (a >= SimdClassBase{ val });
+    }
+    friend SimdMaskBase<tag> operator==(const SimdClassBase& a, ValueType val)
+    { // mask returned
+        return (a == SimdClassBase{ val });
+    }
+    friend SimdMaskBase<tag> operator!=(const SimdClassBase& a, ValueType val)
+    { // mask returned
+        return (a != SimdClassBase{ val });
+    }
+    friend SimdMaskBase<tag> operator<(ValueType val, const SimdClassBase& a)
+    { // mask returned
+        return (SimdClassBase{ val } < a);
+    }
+    friend SimdMaskBase<tag> operator<=(ValueType val, const SimdClassBase& a)
+    { // mask returned
+        return (SimdClassBase{ val } <= a);
+    }
+    friend SimdMaskBase<tag> operator>(ValueType val, const SimdClassBase& a)
+    { // mask returned
+        return (SimdClassBase{ val } > a);
+    }
+    friend SimdMaskBase<tag> operator>=(ValueType val, const SimdClassBase& a)
+    { // mask returned
+        return (SimdClassBase{ val } >= a);
+    }
+    friend SimdMaskBase<tag> operator==(ValueType val, const SimdClassBase& a)
+    { // mask returned
+        return (SimdClassBase{ val } == a);
+    }
+    friend SimdMaskBase<tag> operator!=(ValueType val, const SimdClassBase& a)
+    { // mask returned
+        return (SimdClassBase{ val } != a);
     }
 
 protected:

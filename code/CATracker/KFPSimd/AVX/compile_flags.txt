@@ -1,0 +1,10 @@
+-xc++
+-std=c++17
+-mavx2
+-Wall
+-Wextra
+-pedantic
+-Weffc++
+-Wsign-conversion
+-I
+include/

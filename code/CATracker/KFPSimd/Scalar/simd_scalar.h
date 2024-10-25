@@ -9,10 +9,9 @@ Emails: mithran@fias.uni-frankfurt.de
 #ifndef SIMD_SCALAR_H
 #define SIMD_SCALAR_H
 
+// Mask
 #include "simd_scalar_impl_mask.h"
-
-#include "simd_scalar_impl_index.h"
-
+// Int, Float, Double
 #include "simd_scalar_impl.h"
 
 static_assert(
@@ -29,4 +28,4 @@ static_assert(
     (KFP::SIMD::simd_int::SimdLen == __KFP_SIMD__Scalar_Len_Int),
     "[Error] (simd_scalar.h): KFP::SIMD::simd_int given invalid length of simd type.");
 
-#endif
+#endif // !SIMD_SCALAR_H

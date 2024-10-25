@@ -1,7 +1,7 @@
 // -*- C++ Header -*-
 /*
 ==================================================
-Authors: A.Mithran;
+Authors: A.Mithran, P. Kisel, I. Kisel
 Emails: mithran@fias.uni-frankfurt.de
 ==================================================
 */
@@ -12,6 +12,7 @@ Emails: mithran@fias.uni-frankfurt.de
 #include "simd_detect.h"
 
 #define __KFP_SIMD__INLINE inline __attribute__((always_inline))
+#define __KFP_SIMD__INLINE_FORCE inline __attribute__((always_inline))
 #define __KFP_SIMD__ATTR_ALIGN(x) __attribute__((aligned(x)))
 #define __KFP_SIMD__SPEC_ALIGN(x) alignas(x)
 
@@ -50,4 +51,4 @@ Emails: mithran@fias.uni-frankfurt.de
     "[Error] (simd_macros.hpp): Invalid KFParticle SIMD implementation value was selected."
 #endif
 
-#endif
+#endif // !SIMD_MACROS_H

@@ -1,0 +1,48 @@
+cons EXTRA_CXXFLAGS="-msse4.2 -DNDEBUG -fno-omit-frame-pointer"
+root -q -x -b kfpAnalysis.C | tee run_time.log
+perf record root -q -x -b kfpAnalysis.C | tee run_time.log
+perf record --call-graph dwarf root -q -x -b kfpAnalysis.C | tee run_time.log
+perf report
+
+# KFPSimd
+# ---------------------------------------
+-O2
+Total number of events : 38951
+Average Real Time for ReconstructParticles: 222.24659187183897 microseconds
+Average CP Time for ReconstructParticles: 205.8997201612282 microseconds
+Average Real Time for FindParticles: 188.9429539678057 microseconds
+Average CP Time for FindParticles: 176.88891170958382 microseconds
+# ---------------------------------------
+# Without Switch
+# ---------------------------------------
+Total number of events : 38951
+Average Real Time for ReconstructParticles: 236.9676003183487 microseconds
+Average CP Time for ReconstructParticles: 239.78845215783934 microseconds
+Average Real Time for FindParticles: 201.8472696464789 microseconds
+Average CP Time for FindParticles: 200.7650637981053 microseconds
+-O3
+Total number of events : 38951
+Average Real Time for ReconstructParticles: 218.82169905779057 microseconds
+Average CP Time for ReconstructParticles: 231.0595363405304 microseconds
+Average Real Time for FindParticles: 185.4786013196067 microseconds
+Average CP Time for FindParticles: 199.48139970732458 microseconds
+
+# Vc
+# ---------------------------------------
+-O2
+Total number of events : 38951
+Average Real Time for ReconstructParticles: 193.25375471746554 microseconds
+Average CP Time for ReconstructParticles: 187.4149572539858 microseconds
+Average Real Time for FindParticles: 161.57926625760572 microseconds
+Average CP Time for FindParticles: 159.431080074966 microseconds
+Total number of events : 38951
+Average Real Time for ReconstructParticles: 208.1655669944289 microseconds
+Average CP Time for ReconstructParticles: 208.98051397910194 microseconds
+Average Real Time for FindParticles: 173.61187132551154 microseconds
+Average CP Time for FindParticles: 175.34851480064697 microseconds
+-O3
+Total number of events : 38951
+Average Real Time for ReconstructParticles: 189.34027367718414 microseconds
+Average CP Time for ReconstructParticles: 177.9158429822084 microseconds
+Average Real Time for FindParticles: 157.47367204949808 microseconds
+Average CP Time for FindParticles: 152.7560268029062 microseconds

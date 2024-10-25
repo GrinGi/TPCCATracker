@@ -33,23 +33,24 @@ SimdClassBase<ValueType, tag>::SimdClassBase(const SimdClassBase& class_simd)
 {
     data_.simd_ = class_simd.data_.simd_;
 }
-template <typename ValueType, Tag tag>
-SimdClassBase<ValueType, tag>::SimdClassBase(const SimdIndexBase<tag>& class_index)
-{
-    data_.simd_ = class_index.index();
-}
 
+template<typename ValueType, Tag tag>
+SimdClassBase<ValueType, tag>& SimdClassBase<ValueType, tag>::operator=(ValueType val)
+{
+    data_.simd_ = val;
+    return *this;
+}
 template<typename ValueType, Tag tag>
 SimdClassBase<ValueType, tag>& SimdClassBase<ValueType, tag>::operator=(const SimdClassBase& class_simd)
 {
     data_.simd_ = class_simd.data_.simd_;
     return *this;
 }
+
 template<typename ValueType, Tag tag>
-SimdClassBase<ValueType, tag>& SimdClassBase<ValueType, tag>::operator=(ValueType val)
+SimdClassBase<ValueType, tag> SimdClassBase<ValueType, tag>::iota(ValueType start)
 {
-    data_.simd_ = val;
-    return *this;
+    return start;
 }
 
 template<typename ValueType, Tag tag>
@@ -103,28 +104,15 @@ void SimdClassBase<ValueType, tag>::store_partial(int index, ValueType* p) const
 }
 
 template<typename ValueType, Tag tag>
-SimdClassBase<ValueType, tag>& SimdClassBase<ValueType, tag>::gather(const ValueType* p, const SimdIndexBase<tag>& indices)
+SimdClassBase<ValueType, tag>& SimdClassBase<ValueType, tag>::gather(const ValueType* p, const SimdClassBase<int, tag>& indices)
 {
     data_.simd_ = p[indices[0]];
     return *this;
 }
 template<typename ValueType, Tag tag>
-void SimdClassBase<ValueType, tag>::scatter(ValueType* p, const SimdIndexBase<tag>& indices) const
+void SimdClassBase<ValueType, tag>::scatter(ValueType* p, const SimdClassBase<int, tag>& indices) const
 {
     p[indices[0]] = data_.simd_;
-}
-
-template<typename ValueType, Tag tag>
-SimdClassBase<ValueType, tag>& SimdClassBase<ValueType, tag>::insert(int index, ValueType val)
-{
-    assert((index == 0) &&
-           ("[Error] (insert): invalid index (" + std::to_string(index) +
-            ") given. Non-zero index not allowed.")
-               .data());
-    if (index != 0)
-        return *this;
-    data_.simd_ = val;
-    return *this;
 }
 
 template<typename ValueType, Tag tag>
@@ -141,6 +129,32 @@ ValueType SimdClassBase<ValueType, tag>::operator[](int index) const
     }
     return data_.simd_;
 }
+
+template<typename ValueType, Tag tag>
+SimdClassBase<ValueType, tag>& SimdClassBase<ValueType, tag>::insert(int index, ValueType val)
+{
+    assert((index == 0) &&
+           ("[Error] (insert): invalid index (" + std::to_string(index) +
+            ") given. Non-zero index not allowed.")
+               .data());
+    if (index != 0)
+        return *this;
+    data_.simd_ = val;
+    return *this;
+}
+template<typename ValueType, Tag tag>
+SimdClassBase<ValueType, tag> SimdClassBase<ValueType, tag>::insertCopy(int index, ValueType val) const
+{
+    assert((index == 0) &&
+           ("[Error] (insertCopy): invalid index (" + std::to_string(index) +
+            ") given. Non-zero index not allowed.")
+               .data());
+    if (index != 0)
+        return *this;
+    SimdClassBase<ValueType, tag> result{*this};
+    result.data_.simd_ = val;
+    return result;
+}
 template<typename ValueType, Tag tag>
 SimdClassBase<ValueType, tag>& SimdClassBase<ValueType, tag>::cutoff(int index)
 {
@@ -152,6 +166,18 @@ SimdClassBase<ValueType, tag>& SimdClassBase<ValueType, tag>::cutoff(int index)
     }
     return *this;
 }
+template<typename ValueType, Tag tag>
+SimdClassBase<ValueType, tag> SimdClassBase<ValueType, tag>::cutoffCopy(int index) const
+{
+    assert((index > -1) && ("[Error] (cutoffCopy): invalid index (" +
+                            std::to_string(index) + ") given. Negative")
+                               .data());
+    if (index == 0){
+        return SimdClassBase<ValueType, tag>{ 0 };
+    }
+    return *this;
+}
+// TODO: add shifts and rotates
 
 template <typename T>
 inline T select(const simd_mask& mask, const T& a, const T& b)

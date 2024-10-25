@@ -99,7 +99,7 @@ static __KFP_SIMD__INLINE void sincos(simd_float x, simd_float& sinX, simd_float
     constexpr double pi2 = 1.5707963267948966192313216916398;
     constexpr double pi2i = 0.63661977236758134307553505349006;
 
-    typedef Vc::SimdArray<double, 4> TD;
+    typedef Vc::SimdArray<double, 8> TD;
     TD xd = simd_cast<TD>(x);
     TD nPi2 = round(xd * pi2i);
     x = simd_cast<simd_float>(xd - nPi2 * pi2);
@@ -115,7 +115,7 @@ static __KFP_SIMD__INLINE void sincos(simd_float x, simd_float& sinX, simd_float
     sinX = multiplySign( sinSign, iif(mask, sinS, cosS) );
     cosX = multiplySign( cosSign, iif(mask, cosS, sinS) );
 
-    for(int i=0; i<4; i++) {
+    for(int i=0; i<8; i++) {
       if(fabs(sinX[i] - sin0[i]) > 1.e-7f * fabs(sin0[i]) || fabs(cosX[i] - cos0[i]) > 1.e-7f * fabs(cos0[i]) ) {
         std::cout << "x " << x << "   npi2 " << nPi2 << std::endl;
         std::cout << "sin " << sinX << "     " << sin0 << " " << sin(x) << std::endl;
@@ -245,7 +245,7 @@ static inline __attribute__((always_inline)) void sincos(float_v x, float_v& sin
     constexpr double pi2 = 1.5707963267948966192313216916398;
     constexpr double pi2i = 0.63661977236758134307553505349006;
 
-    typedef Vc::SimdArray<double, 4> TD;
+    typedef Vc::SimdArray<double, 8> TD;
     TD xd = simd_cast<TD>(x);
     TD nPi2 = round(xd * pi2i);
     x = simd_cast<float_v>(xd - nPi2 * pi2);
@@ -261,7 +261,7 @@ static inline __attribute__((always_inline)) void sincos(float_v x, float_v& sin
     sinX = multiplySign( sinSign, iif(mask, sinS, cosS) );
     cosX = multiplySign( cosSign, iif(mask, cosS, sinS) );
 
-    for(int i=0; i<4; i++) {
+    for(int i=0; i<8; i++) {
       if(fabs(sinX[i] - sin0[i]) > 1.e-7f * fabs(sin0[i]) || fabs(cosX[i] - cos0[i]) > 1.e-7f * fabs(cos0[i]) ) {
         std::cout << "x " << x << "   npi2 " << nPi2 << std::endl;
         std::cout << "sin " << sinX << "     " << sin0 << " " << sin(x) << std::endl;
@@ -327,20 +327,19 @@ struct ApplyCos
 
 int main()
 {
-    simd_float::value_type f1234[simd_float::SimdLen]{1.0f, 2.0f, 3.0f, 4.0f};
-
-    simd_float sf1234;
-    sf1234.load(f1234);
+    simd_float::value_type f12345678[simd_float::SimdLen]{1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f};
+    simd_float sf12345678;
+    sf12345678.load(f12345678);
     std::cout << std::string(20, '-') << '\n';
-    std::cout << "Print load of {1.0f, 2.0f, 3.0f, 4.0f} simd_float\n" ;
+    std::cout << "Print load of {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f} simd_float\n";
     std::cout << std::string(20, '-') << '\n';
-    std::cout << sf1234 << '\n';
-    Vc::float_v vf1234;
-    vf1234.load(f1234);
+    std::cout << sf12345678 << '\n';
+    Vc::float_v vf12345678;
+    vf12345678.load(f12345678);
     std::cout << std::string(20, '-') << '\n';
-    std::cout << "Print load of {1.0f, 2.0f, 3.0f, 4.0f} Vc::float_v\n" ;
+    std::cout << "Print load of {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f} Vc::float_v\n";
     std::cout << std::string(20, '-') << '\n';
-    std::cout << vf1234 << '\n';
+    std::cout << vf12345678 << '\n';
 
     // std::cout << std::string(20, '-') << '\n';
     // std::cout << "sin(1.0f), sin(2.0f), sin(3.0f), sin(4.0f):\n" ;

@@ -1,7 +1,7 @@
 // -*- C++ Header -*-
 /*
 ==================================================
-Authors: A.Mithran;
+Authors: A.Mithran, P. Kisel, I. Kisel
 Emails: mithran@fias.uni-frankfurt.de
 ==================================================
 */
@@ -42,7 +42,7 @@ struct SimdData<float, Tag::AVX>
 {
     typedef float value_type;
     typedef __m256 simd_type;
-    __m256 data_ ;
+    __m256 simd_ ;
 };
 #elif defined(__KFP_SIMD__SSE)
 template<>
@@ -51,9 +51,6 @@ struct SimdData<int, Tag::SSE>
     typedef int value_type;
     typedef __m128i simd_type;
     __m128i simd_ ;
-    // int __KFP_SIMD__ATTR_ALIGN(
-    //     __KFP_SIMD__Size_Int) simd_[__KFP_SIMD__Len_Int]{}; // Data array
-    // __KFP_SIMD__SPEC_ALIGN(__KFP_SIMD__Size_Int) int simd_[__KFP_SIMD__Len_Int]{}; // Data array
 };
 
 template<>
@@ -62,9 +59,6 @@ struct SimdData<float, Tag::SSE>
     typedef float value_type;
     typedef __m128 simd_type;
     __m128 simd_ ;
-    // float __KFP_SIMD__ATTR_ALIGN(
-    //     __KFP_SIMD__Size_Float) simd_[__KFP_SIMD__Len_Float]{}; // Data array
-    // __KFP_SIMD__SPEC_ALIGN(__KFP_SIMD__Size_Float) float simd_[__KFP_SIMD__Len_Float]{}; // Data array
 };
 #endif
 

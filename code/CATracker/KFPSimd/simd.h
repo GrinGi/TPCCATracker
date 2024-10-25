@@ -6,8 +6,8 @@ Emails: mithran@fias.uni-frankfurt.de
 ==================================================
 */
 
-#ifndef SIMD_SIMD_H
-#define SIMD_SIMD_H
+#ifndef KFP_SIMD_H
+#define KFP_SIMD_H
 
 // Determine instruction set, and define platform-dependent functions
 #include "Base/simd_macros.h"
@@ -19,6 +19,7 @@ Emails: mithran@fias.uni-frankfurt.de
 #elif defined(__KFP_SIMD__SSE)
 #include "SSE/simd_sse.h"
 #else
+#error "[Error] (simd.h): KFParticle SIMD Scalar not implemented."
 #include "Scalar/simd_scalar.h"
 #endif
 
@@ -36,4 +37,4 @@ static_assert(
     (KFP::SIMD::simd_int::SimdLen == __KFP_SIMD__Len_Int),
     "[Error]: KFP::SIMD::simd_int given invalid length of simd type.");
 
-#endif
+#endif // !KFP_SIMD_H

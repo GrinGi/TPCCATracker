@@ -33,7 +33,7 @@ public:
     // Constructors
     // ------------------------------------------------------
     // Default constructor:
-    SimdMaskBase() {};
+    SimdMaskBase();
     SimdMaskBase(bool val);
     SimdMaskBase(const bool* val_ptr);
     SimdMaskBase(const simd_typei& mask);
@@ -92,20 +92,14 @@ public:
     // ------------------------------------------------------
     friend std::ostream& operator<<(std::ostream& stream, const SimdMaskBase& a)
     {
-        bool mask[__KFP_SIMD__Len_Int]{}; // Helper mask array
-        a.store(mask);
-        stream << "[" << std::boolalpha;
-        for(size_t idx{0} ; idx < (SimdMaskBase::SimdLen-1) ; ++idx){
-            stream << mask[idx] << ", ";
-        }
-        stream << mask[(SimdMaskBase::SimdLen-1)] << std::noboolalpha << "]";
+        Detail::print<SimdMaskBase>(stream, a);
         return stream;
     }
 
     // Comparison (mask returned)
     friend SimdMaskBase operator!(const SimdMaskBase& a)
     {
-        return SimdMaskBase{ Detail::NOTBits<simd_typei>(a.mask_) };
+        return SimdMaskBase{ Detail::NOTLanes<simd_typei>(a.mask_) };
     }
     friend bool operator==(const SimdMaskBase& a, const SimdMaskBase& b)
     {
@@ -117,7 +111,7 @@ public:
     }
     friend SimdMaskBase operator^(const SimdMaskBase& a, const SimdMaskBase& b)
     {
-        return SimdMaskBase{ Detail::XORBits<simd_typei>(a.mask_, b.mask_) };
+        return SimdMaskBase{ Detail::XORLanes<simd_typei>(a.mask_, b.mask_) };
     }
     friend SimdMaskBase operator&&(const SimdMaskBase& a, const SimdMaskBase& b)
     {

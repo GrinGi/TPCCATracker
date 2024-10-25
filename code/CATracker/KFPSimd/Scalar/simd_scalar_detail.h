@@ -20,9 +20,23 @@ namespace SIMD {
 
 namespace Detail {
 
-template <typename T1, typename T2> T1 cast(const T2& val_simd)
+template <typename T1, typename T2> T1 type_cast(const T2& val_simd)
+{
+    return type_cast<T1>(val_simd);
+}
+
+template <typename T1, typename T2> T1 value_cast(const T2& val_simd)
 {
     return static_cast<T1>(val_simd);
+}
+template <typename T1, typename T2> T1 sign(const T2& a)
+{
+    return std::signbit(a) ? T1{-1} : T1{1};
+}
+
+template <typename T1, typename T2> T1 constant(const T2 val)
+{
+    return static_cast<T1>(val);
 }
 
 template <typename T1, typename T2> inline T1 rotated(int amount, const T2& val)
